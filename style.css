@@ -79,44 +79,74 @@ h1.glitch {
     background: var(--acid-green);
 }
 
-/* Neon Eyes */
-.neon-eyes {
+/* Hyper-Feminine Cyber Eyes */
+.eyes-wrapper {
     position: absolute;
-    width: 30px;
-    height: 10px;
-    background: var(--neon-blue);
-    border-radius: 50%;
-    top: 25px;
-    opacity: 0;
-    transition: all 0.1s ease;
-    box-shadow: 0 0 15px var(--neon-blue);
+    top: -80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 120px;
+    pointer-events: none;
     z-index: 1;
 }
 
-.left-eye {
-    left: -40px;
+.cyber-eye {
+    width: 70px;
+    height: 10px;
+    background: var(--neon-blue);
+    border-radius: 50%;
+    box-shadow:
+        0 0 20px var(--neon-blue),
+        0 0 40px var(--hot-pink);
+    position: relative;
+    overflow: hidden;
+    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    opacity: 0;
 }
 
-.right-eye {
-    right: -40px;
+.cyber-eye::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 25px;
+    height: 25px;
+    background: white;
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px white;
 }
 
-#start-button:hover~.neon-eyes {
+.cyber-eye::before {
+    content: '|||||';
+    position: absolute;
+    top: -20px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: var(--hot-pink);
+    font-size: 24px;
+    letter-spacing: 4px;
+    font-weight: bold;
+    text-shadow: 0 0 5px var(--hot-pink);
+}
+
+#start-button:hover~.eyes-wrapper .cyber-eye {
     opacity: 1;
-    height: 30px;
-    animation: blink 3s infinite;
+    height: 40px;
+    animation: blink-cyber 4s infinite;
 }
 
-@keyframes blink {
+@keyframes blink-cyber {
 
     0%,
     90%,
     100% {
-        height: 30px;
+        transform: scaleY(1);
     }
 
     95% {
-        height: 2px;
+        transform: scaleY(0.1);
     }
 }
 
@@ -132,28 +162,36 @@ h1.glitch {
     top: 0;
     left: 0;
     width: 100%;
-    padding: 20px;
+    height: 100%;
+    /* FIX: Full screen height to center crosshair */
     pointer-events: none;
     z-index: 50;
     box-sizing: border-box;
+    display: flex;
+    flex-direction: column;
+    justify-content: flex-start;
 }
 
 .score-container {
+    padding: 20px;
     color: var(--hot-pink);
-    font-size: 2rem;
+    font-size: 2.5rem;
     font-weight: 900;
-    text-shadow: 2px 2px 0px var(--black);
+    text-shadow: 3px 3px 0px var(--black);
+    font-family: 'Press Start 2P', cursive;
 }
 
 .crosshair {
-    position: absolute;
+    position: fixed;
+    /* Fixed to center of screen */
     top: 50%;
     left: 50%;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--neon-blue);
+    width: 30px;
+    height: 30px;
+    border: 3px solid var(--neon-blue);
     border-radius: 50%;
     transform: translate(-50%, -50%);
+    box-shadow: 0 0 10px var(--neon-blue);
 }
 
 .crosshair::after {
