@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Divas & Shot | Y2K Scene FPS</title>
+    <link rel="stylesheet" href="style.css">
+    <!-- Google Fonts for Y2K vibe -->
+    <link href="https://fonts.googleapis.com/css2?family=Orbitron:wght@400;900&family=Press+Start+2P&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- Overlay de Menu -->
+    <div id="game-menu">
+        <div class="menu-content">
+            <h1 class="glitch" data-text="DIVAS & SHOT">DIVAS & SHOT</h1>
+            <p class="subtitle">SCENE QUEEN EDITION</p>
+            
+            <div class="start-container">
+                <div class="neon-eyes left-eye"></div>
+                <div class="neon-eyes right-eye"></div>
+                <button id="start-button">START</button>
+            </div>
+            
+            <div class="controls-hint">
+                WASD: MOVER | MOUSE: MIRAR | CLICK: ATIRAR
+            </div>
+        </div>
+    </div>
+
+    <!-- HUD do Jogo -->
+    <div id="hud" style="display: none;">
+        <div class="score-container">
+            SCORE: <span id="score-value">000000</span>
+        </div>
+        <div class="crosshair"></div>
+    </div>
+
+    <!-- Container do Three.js -->
+    <div id="canvas-container"></div>
+
+    <!-- Scripts -->
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+                "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+            }
+        }
+    </script>
+    <script type="module" src="main.js"></script>
+</body>
+</html>

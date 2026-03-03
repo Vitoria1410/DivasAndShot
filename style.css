@@ -1,0 +1,193 @@
+:root {
+    --hot-pink: #ff00ff;
+    --neon-blue: #00ffff;
+    --acid-green: #ccff00;
+    --black: #000000;
+}
+
+body,
+html {
+    margin: 0;
+    padding: 0;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: var(--black);
+    font-family: 'Orbitron', sans-serif;
+}
+
+/* Menu Style */
+#game-menu {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 100;
+    background: radial-gradient(circle, #330033 0%, #000000 100%);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: opacity 0.5s ease-out;
+}
+
+.menu-content {
+    text-align: center;
+}
+
+h1.glitch {
+    font-size: 5rem;
+    color: var(--hot-pink);
+    font-weight: 900;
+    margin-bottom: 0;
+    text-shadow:
+        3px 3px 0px var(--neon-blue),
+        -3px -3px 0px var(--acid-green);
+    letter-spacing: 5px;
+}
+
+.subtitle {
+    color: var(--neon-blue);
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    margin-bottom: 50px;
+}
+
+/* Start Button & Eyes Container */
+.start-container {
+    position: relative;
+    display: inline-block;
+}
+
+#start-button {
+    background: var(--hot-pink);
+    border: 4px solid var(--black);
+    color: var(--black);
+    padding: 15px 50px;
+    font-size: 2rem;
+    font-weight: 900;
+    cursor: pointer;
+    position: relative;
+    z-index: 2;
+    box-shadow: 5px 5px 0px var(--neon-blue);
+    transition: all 0.2s;
+}
+
+#start-button:hover {
+    transform: translate(-3px, -3px);
+    box-shadow: 8px 8px 0px var(--neon-blue);
+    background: var(--acid-green);
+}
+
+/* Neon Eyes */
+.neon-eyes {
+    position: absolute;
+    width: 30px;
+    height: 10px;
+    background: var(--neon-blue);
+    border-radius: 50%;
+    top: 25px;
+    opacity: 0;
+    transition: all 0.1s ease;
+    box-shadow: 0 0 15px var(--neon-blue);
+    z-index: 1;
+}
+
+.left-eye {
+    left: -40px;
+}
+
+.right-eye {
+    right: -40px;
+}
+
+#start-button:hover~.neon-eyes {
+    opacity: 1;
+    height: 30px;
+    animation: blink 3s infinite;
+}
+
+@keyframes blink {
+
+    0%,
+    90%,
+    100% {
+        height: 30px;
+    }
+
+    95% {
+        height: 2px;
+    }
+}
+
+.controls-hint {
+    margin-top: 50px;
+    color: #666;
+    font-size: 0.7rem;
+}
+
+/* HUD */
+#hud {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    padding: 20px;
+    pointer-events: none;
+    z-index: 50;
+    box-sizing: border-box;
+}
+
+.score-container {
+    color: var(--hot-pink);
+    font-size: 2rem;
+    font-weight: 900;
+    text-shadow: 2px 2px 0px var(--black);
+}
+
+.crosshair {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 20px;
+    height: 20px;
+    border: 2px solid var(--neon-blue);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+.crosshair::after {
+    content: '';
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    width: 4px;
+    height: 4px;
+    background: var(--hot-pink);
+    border-radius: 50%;
+    transform: translate(-50%, -50%);
+}
+
+canvas {
+    display: block;
+}
+
+/* Scanlines & Post-FX */
+#canvas-container::after {
+    content: " ";
+    display: block;
+    position: absolute;
+    top: 0;
+    left: 0;
+    bottom: 0;
+    right: 0;
+    background: linear-gradient(rgba(18, 16, 16, 0) 50%, rgba(0, 0, 0, 0.25) 50%), linear-gradient(90deg, rgba(255, 0, 0, 0.06), rgba(0, 255, 0, 0.02), rgba(0, 0, 255, 0.06));
+    z-index: 10;
+    background-size: 100% 4px, 3px 100%;
+    pointer-events: none;
+    opacity: 0.3;
+}
+
+#canvas-container {
+    filter: contrast(1.2) saturate(1.5) brightness(1.1);
+}
