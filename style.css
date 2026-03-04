@@ -24,7 +24,10 @@ html {
     width: 100%;
     height: 100%;
     z-index: 100;
-    background: radial-gradient(circle, #330033 0%, #000000 100%);
+    background: #0a001a radial-gradient(circle at center, #2a004a 0%, #0a001a 100%);
+    background-image: 
+        radial-gradient(circle at center, rgba(42, 0, 74, 0.8) 0%, rgba(10, 0, 26, 1) 100%),
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -33,127 +36,159 @@ html {
 
 .menu-content {
     text-align: center;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    width: 100%;
+    max-width: 600px;
 }
 
+/* Título */
 h1.glitch {
-    font-size: 5rem;
+    font-size: 4rem;
     color: var(--hot-pink);
     font-weight: 900;
-    margin-bottom: 0;
-    text-shadow:
-        3px 3px 0px var(--neon-blue),
-        -3px -3px 0px var(--acid-green);
+    margin-bottom: 0px;
+    margin-top: 15px;
+    text-shadow: 0 0 10px var(--hot-pink), 2px 2px 0px rgba(0,0,0,0.5);
     letter-spacing: 5px;
+    text-transform: uppercase;
+}
+h1.glitch .ampersand {
+    color: var(--neon-blue);
+    text-shadow: 0 0 10px var(--neon-blue);
+}
+
+.subtitle-container {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 15px;
+    margin-bottom: 40px;
+}
+.subtitle-container .diamond {
+    color: var(--hot-pink);
+    font-size: 0.8rem;
 }
 
 .subtitle {
     color: var(--neon-blue);
     font-family: 'Press Start 2P', cursive;
-    font-size: 0.8rem;
-    margin-bottom: 50px;
+    font-size: 0.7rem;
+    margin: 0;
+    letter-spacing: 2px;
 }
 
-/* Start Button & Eyes Container */
-.start-container {
-    position: relative;
-    display: inline-block;
-}
-
-#start-button {
-    background: var(--hot-pink);
-    border: 4px solid var(--black);
-    color: var(--black);
-    padding: 15px 50px;
-    font-size: 2rem;
-    font-weight: 900;
-    cursor: pointer;
-    position: relative;
-    z-index: 2;
-    box-shadow: 5px 5px 0px var(--neon-blue);
-    transition: all 0.2s;
-}
-
-#start-button:hover {
-    transform: translate(-3px, -3px);
-    box-shadow: 8px 8px 0px var(--neon-blue);
-    background: var(--acid-green);
-}
-
-/* Hyper-Feminine Cyber Eyes */
-.eyes-wrapper {
-    position: absolute;
-    top: -80px;
-    left: 50%;
-    transform: translateX(-50%);
+/* Botões */
+.menu-buttons {
     display: flex;
-    gap: 120px;
-    pointer-events: none;
-    z-index: 1;
+    flex-direction: column;
+    gap: 15px;
+    width: 100%;
+    max-width: 300px;
 }
 
-.cyber-eye {
-    width: 70px;
-    height: 10px;
-    background: var(--neon-blue);
-    border-radius: 50%;
-    box-shadow:
-        0 0 20px var(--neon-blue),
-        0 0 40px var(--hot-pink);
+.menu-btn {
+    background: rgba(255, 0, 255, 0.05);
+    border: 2px solid rgba(255, 0, 255, 0.5);
+    border-radius: 8px;
+    color: white;
+    padding: 15px 25px;
+    font-size: 1.5rem;
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
+    cursor: pointer;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.2), inset 0 0 10px rgba(255, 0, 255, 0.1);
+    text-shadow: 0 0 5px rgba(255,255,255,0.5);
     position: relative;
     overflow: hidden;
-    transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-    opacity: 0;
 }
 
-.cyber-eye::after {
+.menu-btn:hover {
+    background: linear-gradient(90deg, #ff00ff 0%, #aa00ff 100%);
+    border-color: var(--hot-pink);
+    transform: scale(1.05);
+    box-shadow: 0 0 25px var(--hot-pink);
+    color: white;
+    text-shadow: 0 0 5px white;
+}
+
+.menu-btn .icon {
+    font-size: 1.2rem;
+    opacity: 0.8;
+}
+
+/* EYES BACKGROUND STYLE */
+.eyes-bg {
+    width: 100%;
+    height: 100px;
+    display: flex;
+    justify-content: center;
+    gap: 80px;
+}
+
+.eye-shape {
+    width: 140px;
+    height: 70px;
+    background: radial-gradient(ellipse at center, #ff00a0 0%, #330033 70%);
+    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    position: relative;
+    box-shadow: 0 0 30px #ff00a0, inset 0 0 20px #ff0000;
+    border: 3px solid #ff0055;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    animation: eyePulse 3s infinite alternate;
+}
+
+.eye-pupil {
+    width: 45px;
+    height: 45px;
+    background: #000;
+    border-radius: 50%;
+    position: relative;
+    box-shadow: 0 0 15px #00ffff;
+    border: 2px solid #550055;
+    transition: all 0.2s;
+}
+.eye-pupil::after {
     content: '';
     position: absolute;
-    top: 50%;
-    left: 50%;
-    width: 25px;
-    height: 25px;
+    top: 5px;
+    right: 8px;
+    width: 12px;
+    height: 12px;
     background: white;
     border-radius: 50%;
-    transform: translate(-50%, -50%);
-    box-shadow: 0 0 10px white;
+    box-shadow: 0 0 8px white;
 }
 
-.cyber-eye::before {
-    content: '|||||';
-    position: absolute;
-    top: -20px;
-    left: 50%;
-    transform: translateX(-50%);
-    color: var(--hot-pink);
-    font-size: 24px;
-    letter-spacing: 4px;
-    font-weight: bold;
-    text-shadow: 0 0 5px var(--hot-pink);
+#game-menu:hover .eye-pupil {
+    box-shadow: 0 0 25px #00ffff, 0 0 40px #ff00ff;
+    transform: scale(1.1);
 }
 
-#start-button:hover~.eyes-wrapper .cyber-eye {
-    opacity: 1;
-    height: 40px;
-    animation: blink-cyber 4s infinite;
-}
-
-@keyframes blink-cyber {
-
-    0%,
-    90%,
-    100% {
-        transform: scaleY(1);
-    }
-
-    95% {
-        transform: scaleY(0.1);
-    }
+@keyframes eyePulse {
+    0% { transform: scale(1); filter: brightness(1); }
+    100% { transform: scale(1.03); filter: brightness(1.2); box-shadow: 0 0 50px #ff00a0; }
 }
 
 .controls-hint {
-    margin-top: 50px;
-    color: #666;
-    font-size: 0.7rem;
+    margin-top: 40px;
+    color: #888;
+    font-size: 0.6rem;
+    font-family: 'Press Start 2P', cursive;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    justify-content: center;
+}
+.controls-hint .diamond-small {
+    color: #444;
 }
 
 /* HUD */

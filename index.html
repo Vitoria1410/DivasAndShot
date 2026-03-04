@@ -15,19 +15,42 @@
     <!-- Overlay de Menu -->
     <div id="game-menu">
         <div class="menu-content">
-            <h1 class="glitch" data-text="DIVAS & SHOT">DIVAS & SHOT</h1>
-            <p class="subtitle">SCENE QUEEN EDITION</p>
-
-            <div class="start-container">
-                <div class="eyes-wrapper">
-                    <div class="cyber-eye"></div>
-                    <div class="cyber-eye"></div>
+            <!-- Olhos no Fundo -->
+            <div class="eyes-bg">
+                <div class="eye-shape">
+                    <div class="eye-pupil"></div>
                 </div>
-                <button id="start-button">START</button>
+                <div class="eye-shape">
+                    <div class="eye-pupil"></div>
+                </div>
+            </div>
+
+            <h1 class="glitch" data-text="DIVAS & SHOT">DIVAS <span class="ampersand">&</span> SHOT</h1>
+
+            <div class="subtitle-container">
+                <span class="diamond">✧</span>
+                <p class="subtitle">SCENE QUEEN EDITION</p>
+                <span class="diamond">✧</span>
+            </div>
+
+            <div class="menu-buttons">
+                <button id="start-button" class="menu-btn">
+                    <span>START</span>
+                    <span class="icon">❯</span>
+                </button>
+                <button id="shop-button" class="menu-btn">
+                    <span>SHOP</span>
+                    <span class="icon">🛒</span>
+                </button>
+                <button id="config-button" class="menu-btn">
+                    <span>CONFIG</span>
+                    <span class="icon">⚙️</span>
+                </button>
             </div>
 
             <div class="controls-hint">
-                WASD: MOVER | MOUSE: MIRAR | CLICK: ATIRAR | ESC: PAUSAR
+                <span class="diamond-small">✧</span> WASD: MOVER | MOUSE: MIRAR | CLICK: ATIRAR | ESC: PAUSAR <span
+                    class="diamond-small">✧</span>
             </div>
         </div>
     </div>
