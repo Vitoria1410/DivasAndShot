@@ -58,7 +58,7 @@ html {
 .eye-shape {
     width: 220px;
     height: 130px;
-    background-image: url('eyes_sprite.png');
+    background-image: url('eyes_sprite.png.png');
     background-size: 200% 200%;
     background-repeat: no-repeat;
     animation: eyePulse 3s infinite alternate;

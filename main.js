@@ -114,7 +114,7 @@ function initTrees() {
 }
 
 textureLoader.load(
-    'tree.png',
+    'tree.png.png',
     (tex) => { treeTexture = tex; initTrees(); },
     undefined,
     () => { console.warn('tree.png não encontrado, usando árvores geométricas.'); initTrees(); }
