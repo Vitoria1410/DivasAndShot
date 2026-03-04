@@ -92,13 +92,33 @@ function applyGroundTexture(tex) {
 }
 
 const ground = new THREE.Mesh(
-    new THREE.PlaneGeometry(500, 500),
+    new THREE.PlaneGeometry(MAP_LIMIT * 2 + 10, MAP_LIMIT * 2 + 10),
     new THREE.MeshBasicMaterial({ map: createForestTexture() })
 );
 ground.position.z = -1;
 scene.add(ground);
 
-// Tenta carregar ground.png; se existir, substitui o procedural
+// --- BORDAS DO MAPA ---
+const borderThickness = 10;
+const borderMat = new THREE.MeshBasicMaterial({ color: 0x0a0014, transparent: true, opacity: 0.8 });
+// Top
+const borderTop = new THREE.Mesh(new THREE.PlaneGeometry(MAP_LIMIT * 2 + borderThickness * 2, borderThickness), borderMat);
+borderTop.position.set(0, MAP_LIMIT + borderThickness / 2, 0.1);
+scene.add(borderTop);
+// Bottom
+const borderBottom = new THREE.Mesh(new THREE.PlaneGeometry(MAP_LIMIT * 2 + borderThickness * 2, borderThickness), borderMat);
+borderBottom.position.set(0, -MAP_LIMIT - borderThickness / 2, 0.1);
+scene.add(borderBottom);
+// Left
+const borderLeft = new THREE.Mesh(new THREE.PlaneGeometry(borderThickness, MAP_LIMIT * 2), borderMat);
+borderLeft.position.set(-MAP_LIMIT - borderThickness / 2, 0, 0.1);
+scene.add(borderLeft);
+// Right
+const borderRight = new THREE.Mesh(new THREE.PlaneGeometry(borderThickness, MAP_LIMIT * 2), borderMat);
+borderRight.position.set(MAP_LIMIT + borderThickness / 2, 0, 0.1);
+scene.add(borderRight);
+
+// Tenta carregar ground.jpg; se existir, substitui o procedural
 textureLoader.load(
     'ground.jpg',
     (tex) => applyGroundTexture(tex),
