@@ -17,15 +17,32 @@ const SWORD_DAMAGE = 25;
 const SWORD_RANGE = 4.5;
 const GUN_DAMAGE = 15;
 
+// Novos inimigos: Aranha
+const SPIDER_COUNT = 5;
+const WEB_SPEED = 0.25;
+const WEB_DAMAGE = 15;
+const SPIDER_DETECTION_RADIUS = 25;
+const SPIDER_FIRE_RATE = 120; // frames entre tiros
+
 // --- STATE ---
 let score = 0;
 let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
 let isGameOver = false;
 let inventoryOpen = false;
+
+// Animation State
+let playerState = 'idle'; // 'idle' or 'walk'
+let playerDirection = 'front'; // 'front', 'back', 'side'
+let playerFrames = 4; // Ajuste para o número real de frames no seu png
+let animTimer = 0;
+let currentFrame = 0;
+const ANIM_SPEED = 0.15;
+
 const treeColliders = [];
-const enemies = []; // { mesh, state, patrolDir, patrolTimer }
+const enemies = []; // { mesh, state, patrolDir, patrolTimer, type }
 const bullets = [];
+const webs = [];
 let gameStarted = false;
 const mouse = new THREE.Vector2();
 const worldMouse = new THREE.Vector3();
@@ -247,16 +264,24 @@ textureLoader.load(
 const playerGroup = new THREE.Group();
 
 // Visual da Personagem
-const playerMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, alphaTest: 0.1 });
+const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.1 });
 const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), playerMat);
-playerVisual.position.set(0, 0.8, 0.2); // Fica em pé a partir do chão
+playerVisual.position.set(0, 0.8, 0.2);
 playerGroup.add(playerVisual);
 
-textureLoader.load('player.png', (tex) => {
-    playerMat.map = tex;
-    playerMat.color.setHex(0xffffff); // Remove a cor sólida pink após carregar PNG
-    playerMat.needsUpdate = true;
+const playerTextures = {
+    'front': textureLoader.load('walkfront.png.png'),
+    'back': textureLoader.load('backwalk.png.png'),
+    'side': textureLoader.load('sidewalk.png.png')
+};
+
+Object.values(playerTextures).forEach(tex => {
+    tex.magFilter = tex.minFilter = THREE.NearestFilter;
+    tex.repeat.set(1 / playerFrames, 1);
 });
+
+playerMat.map = playerTextures['front'];
+playerMat.needsUpdate = true;
 
 // Grupo da Mira (só a arma gira!)
 const aimGroup = new THREE.Group();
@@ -361,10 +386,85 @@ function createFrog() {
         mesh: frog,
         hpBar: enemyHpBar,
         hp: ENEMY_MAX_HP,
+        type: 'frog',
         state: 'patrol',
         patrolDir: Math.random() * Math.PI * 2,
         patrolTimer: Math.floor(Math.random() * 120) + 60
     });
+}
+
+function createSpider() {
+    const spider = new THREE.Group();
+    // Corpo
+    const body = new THREE.Mesh(
+        new THREE.CircleGeometry(0.8, 8),
+        new THREE.MeshBasicMaterial({ color: 0x222222 })
+    );
+    spider.add(body);
+    // Pernas (simplificadas)
+    for (let i = 0; i < 8; i++) {
+        const angle = (i / 8) * Math.PI * 2;
+        const leg = new THREE.Mesh(
+            new THREE.PlaneGeometry(1.2, 0.1),
+            new THREE.MeshBasicMaterial({ color: 0x444444 })
+        );
+        leg.position.set(Math.cos(angle) * 0.6, Math.sin(angle) * 0.6, -0.1);
+        leg.rotation.z = angle;
+        spider.add(leg);
+    }
+    // Olhos vermelhos
+    [[-0.2, 0.3], [0.2, 0.3]].forEach(([ex, ey]) => {
+        const eye = new THREE.Mesh(
+            new THREE.CircleGeometry(0.12, 6),
+            new THREE.MeshBasicMaterial({ color: 0xff0000 })
+        );
+        eye.position.set(ex, ey, 0.1);
+        spider.add(eye);
+    });
+
+    // Barra de Vida
+    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.12), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    hpBg.position.set(0, 1.2, 0.2);
+    spider.add(hpBg);
+    const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(1.4, 0.08), new THREE.MeshBasicMaterial({ color: 0xff0000 }));
+    hpBar.position.set(0, 1.2, 0.21);
+    spider.add(hpBar);
+
+    const angle = Math.random() * Math.PI * 2;
+    const fx = playerGroup.position.x + Math.cos(angle) * SPAWN_RADIUS;
+    const fy = playerGroup.position.y + Math.sin(angle) * SPAWN_RADIUS;
+    spider.position.set(fx, fy, -fy * 0.001);
+
+    scene.add(spider);
+    enemies.push({
+        mesh: spider,
+        hpBar: hpBar,
+        hp: ENEMY_MAX_HP * 0.8, // aranhas têm menos vida que sapos
+        type: 'spider',
+        state: 'patrol',
+        shootTimer: Math.floor(Math.random() * SPIDER_FIRE_RATE),
+        patrolDir: Math.random() * Math.PI * 2,
+        patrolTimer: Math.floor(Math.random() * 100) + 40
+    });
+}
+
+function shootWeb(fromPosition) {
+    const web = new THREE.Mesh(
+        new THREE.CircleGeometry(0.4, 6),
+        new THREE.MeshBasicMaterial({ color: 0xeeeeee, transparent: true, opacity: 0.8 })
+    );
+    web.position.copy(fromPosition);
+    web.position.z = 0.5;
+
+    const dx = playerGroup.position.x - fromPosition.x;
+    const dy = playerGroup.position.y - fromPosition.y;
+    const len = Math.sqrt(dx * dx + dy * dy);
+
+    webs.push({
+        mesh: web,
+        dir: new THREE.Vector3(dx / len, dy / len, 0)
+    });
+    scene.add(web);
 }
 
 // --- ARMAS & MECÂNICAS ---
@@ -402,11 +502,12 @@ function slash() {
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (enemies[j].mesh.position.distanceTo(hitZone) < 3.5) {
+                const type = enemies[j].type;
                 if (updateEnemyHP(enemies[j], SWORD_DAMAGE)) {
                     scene.remove(enemies[j].mesh); enemies.splice(j, 1);
-                    score += 100;
+                    score += 150; // Bônus por matar de perto
                     document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                    createFrog();
+                    if (type === 'frog') createFrog(); else createSpider();
                 }
             }
         }
@@ -452,13 +553,36 @@ function updateBullets() {
                 scene.remove(b.mesh); bullets.splice(i, 1);
 
                 if (isDead) {
+                    const type = enemies[j].type;
                     scene.remove(enemies[j].mesh); enemies.splice(j, 1);
                     score += 100;
                     document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                    createFrog();
+                    if (type === 'frog') createFrog(); else createSpider();
                 }
                 break;
             }
+        }
+    }
+}
+
+function updateWebs() {
+    for (let i = webs.length - 1; i >= 0; i--) {
+        const w = webs[i];
+        w.mesh.position.addScaledVector(w.dir, WEB_SPEED);
+
+        // Colisão da teia com o Player
+        if (w.mesh.position.distanceTo(playerGroup.position) < 1.2) {
+            if (damageCooldown === 0) {
+                playerHP -= WEB_DAMAGE;
+                damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
+            }
+            scene.remove(w.mesh); webs.splice(i, 1);
+            continue;
+        }
+
+        if (w.mesh.position.distanceTo(playerGroup.position) > 50) {
+            scene.remove(w.mesh); webs.splice(i, 1);
         }
     }
 }
@@ -473,7 +597,8 @@ function triggerGameOver() {
 function resetGame() {
     [...enemies].forEach(e => scene.remove(e.mesh));
     [...bullets].forEach(b => scene.remove(b.mesh));
-    enemies.length = 0; bullets.length = 0;
+    [...webs].forEach(w => scene.remove(w.mesh));
+    enemies.length = 0; bullets.length = 0; webs.length = 0;
     score = 0; playerHP = PLAYER_MAX_HP; damageCooldown = 0; isGameOver = false; inventoryOpen = false;
     document.getElementById('score-value').innerText = '000000';
     document.getElementById('inventory').style.display = 'none';
@@ -481,6 +606,7 @@ function resetGame() {
     playerGroup.position.set(0, 0, 0);
     camera.position.set(0, 0, 10);
     for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
+    for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('game-menu').style.display = 'flex';
     document.getElementById('game-menu').style.opacity = '1';
@@ -551,6 +677,25 @@ function updateMovement() {
         const len = Math.sqrt(mx * mx + my * my);
         nextX += (mx / len) * PLAYER_SPEED;
         nextY += (my / len) * PLAYER_SPEED;
+
+        playerState = 'walk';
+
+        // Prioridade lateral na animação se houver movimento Horizontal
+        if (mx !== 0) {
+            playerDirection = 'side';
+            playerVisual.scale.x = mx < 0 ? -1 : 1;
+        } else if (my > 0) {
+            playerDirection = 'back';
+        } else {
+            playerDirection = 'front';
+        }
+    } else {
+        playerState = 'idle';
+    }
+
+    // Troca de textura
+    if (playerMat.map !== playerTextures[playerDirection]) {
+        playerMat.map = playerTextures[playerDirection];
     }
 
     // --- SISTEMA DE COLISÃO / ANTI-GRAVITY ---
@@ -604,48 +749,84 @@ function animate() {
     if (gameStarted) {
         updateMovement();
         updateBullets();
+        updateWebs();
         updateHPBar();
         updateParticles();
+
+        // Animação da Personagem
+        if (playerState === 'walk') {
+            animTimer += ANIM_SPEED;
+            currentFrame = Math.floor(animTimer) % playerFrames;
+        } else {
+            currentFrame = 0; // Frame de parada
+        }
+
+        if (playerMat.map) {
+            playerMat.map.offset.x = currentFrame / playerFrames;
+        }
 
         if (damageCooldown > 0) damageCooldown--;
         playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
 
-        // IA dos Sapos: Patrulha <-> Perseguição
+        // IA dos Inimigos
         enemies.forEach(enemy => {
-            const frog = enemy.mesh;
-            const dx = playerGroup.position.x - frog.position.x;
-            const dy = playerGroup.position.y - frog.position.y;
+            const mesh = enemy.mesh;
+            const dx = playerGroup.position.x - mesh.position.x;
+            const dy = playerGroup.position.y - mesh.position.y;
             const dist = Math.sqrt(dx * dx + dy * dy);
 
-            if (dist < DETECTION_RADIUS) {
-                // MODO PERSEGUIÇÃO
-                enemy.state = 'chase';
-                const angle = Math.atan2(dy, dx);
-                frog.position.x += Math.cos(angle) * ENEMY_SPEED;
-                frog.position.y += Math.sin(angle) * ENEMY_SPEED;
-                frog.position.z = -frog.position.y * 0.001;
-                frog.rotation.z = angle - Math.PI / 2;
+            if (enemy.type === 'frog') {
+                if (dist < DETECTION_RADIUS) {
+                    enemy.state = 'chase';
+                    const angle = Math.atan2(dy, dx);
+                    mesh.position.x += Math.cos(angle) * ENEMY_SPEED;
+                    mesh.position.y += Math.sin(angle) * ENEMY_SPEED;
+                    mesh.rotation.z = angle - Math.PI / 2;
+                    if (dist < 1.5 && damageCooldown === 0) {
+                        playerHP -= DAMAGE_PER_HIT;
+                        damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                        if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
+                    }
+                } else {
+                    enemy.state = 'patrol';
+                    enemy.patrolTimer--;
+                    if (enemy.patrolTimer <= 0) {
+                        enemy.patrolDir = Math.random() * Math.PI * 2;
+                        enemy.patrolTimer = Math.floor(Math.random() * 150) + 60;
+                    }
+                    mesh.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED;
+                    mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED;
+                    mesh.rotation.z = Math.sin(Date.now() * 0.002 + enemy.patrolDir) * 0.3;
+                }
+            } else if (enemy.type === 'spider') {
+                if (dist < SPIDER_DETECTION_RADIUS) {
+                    const angle = Math.atan2(dy, dx);
+                    if (dist > 16) {
+                        mesh.position.x += Math.cos(angle) * ENEMY_SPEED * 0.5;
+                        mesh.position.y += Math.sin(angle) * ENEMY_SPEED * 0.5;
+                    } else if (dist < 10) {
+                        mesh.position.x -= Math.cos(angle) * ENEMY_SPEED * 0.8;
+                        mesh.position.y -= Math.sin(angle) * ENEMY_SPEED * 0.8;
+                    }
+                    mesh.rotation.z = angle - Math.PI / 2;
 
-                // Dano ao player
-                if (dist < 1.5 && damageCooldown === 0) {
-                    playerHP -= DAMAGE_PER_HIT;
-                    damageCooldown = DAMAGE_COOLDOWN_FRAMES;
-                    if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
+                    enemy.shootTimer--;
+                    if (enemy.shootTimer <= 0) {
+                        shootWeb(mesh.position);
+                        enemy.shootTimer = SPIDER_FIRE_RATE + Math.random() * 40;
+                    }
+                } else {
+                    enemy.patrolTimer--;
+                    if (enemy.patrolTimer <= 0) {
+                        enemy.patrolDir = Math.random() * Math.PI * 2;
+                        enemy.patrolTimer = 150;
+                    }
+                    mesh.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED * 0.4;
+                    mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED * 0.4;
+                    mesh.rotation.z = Math.sin(Date.now() * 0.001) * 0.3;
                 }
-            } else {
-                // MODO PATRULHA (movimento aleatório lento)
-                enemy.state = 'patrol';
-                enemy.patrolTimer--;
-                if (enemy.patrolTimer <= 0) {
-                    enemy.patrolDir = Math.random() * Math.PI * 2;
-                    enemy.patrolTimer = Math.floor(Math.random() * 150) + 60;
-                }
-                frog.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED;
-                frog.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED;
-                frog.position.z = -frog.position.y * 0.001;
-                // Sacudida leve (sapo descansando)
-                frog.rotation.z = Math.sin(Date.now() * 0.002 + enemy.patrolDir) * 0.3;
             }
+            mesh.position.z = -mesh.position.y * 0.001;
         });
     }
 
@@ -662,4 +843,5 @@ window.addEventListener('resize', () => {
 
 // Init
 for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
+for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
 animate();
