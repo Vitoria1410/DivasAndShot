@@ -25,9 +25,9 @@ html {
     height: 100%;
     z-index: 100;
     background: #0a001a radial-gradient(circle at center, #2a004a 0%, #0a001a 100%);
-    background-image: 
+    background-image:
         radial-gradient(circle at center, rgba(42, 0, 74, 0.8) 0%, rgba(10, 0, 26, 1) 100%),
-        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0,0,0,0.3) 2px, rgba(0,0,0,0.3) 4px);
+        repeating-linear-gradient(0deg, transparent, transparent 2px, rgba(0, 0, 0, 0.3) 2px, rgba(0, 0, 0, 0.3) 4px);
     display: flex;
     justify-content: center;
     align-items: center;
@@ -50,10 +50,11 @@ h1.glitch {
     font-weight: 900;
     margin-bottom: 0px;
     margin-top: 15px;
-    text-shadow: 0 0 10px var(--hot-pink), 2px 2px 0px rgba(0,0,0,0.5);
+    text-shadow: 0 0 10px var(--hot-pink), 2px 2px 0px rgba(0, 0, 0, 0.5);
     letter-spacing: 5px;
     text-transform: uppercase;
 }
+
 h1.glitch .ampersand {
     color: var(--neon-blue);
     text-shadow: 0 0 10px var(--neon-blue);
@@ -66,6 +67,7 @@ h1.glitch .ampersand {
     gap: 15px;
     margin-bottom: 40px;
 }
+
 .subtitle-container .diamond {
     color: var(--hot-pink);
     font-size: 0.8rem;
@@ -103,7 +105,7 @@ h1.glitch .ampersand {
     align-items: center;
     transition: all 0.3s cubic-bezier(0.25, 0.8, 0.25, 1);
     box-shadow: 0 0 10px rgba(255, 0, 255, 0.2), inset 0 0 10px rgba(255, 0, 255, 0.1);
-    text-shadow: 0 0 5px rgba(255,255,255,0.5);
+    text-shadow: 0 0 5px rgba(255, 255, 255, 0.5);
     position: relative;
     overflow: hidden;
 }
@@ -132,49 +134,57 @@ h1.glitch .ampersand {
 }
 
 .eye-shape {
-    width: 140px;
-    height: 70px;
-    background: radial-gradient(ellipse at center, #ff00a0 0%, #330033 70%);
-    border-radius: 50% 50% 50% 50% / 60% 60% 40% 40%;
+    width: 200px;
+    /* Adjusted size for the PNG eyes */
+    height: 120px;
+    background-image: url('eyes_sprite.png');
+    background-size: 200% 200%;
+    /* Sprite sheet of 2x2 */
+    background-repeat: no-repeat;
     position: relative;
-    box-shadow: 0 0 30px #ff00a0, inset 0 0 20px #ff0000;
-    border: 3px solid #ff0055;
     display: flex;
     justify-content: center;
     align-items: center;
     animation: eyePulse 3s infinite alternate;
+    transition: all 0.2s ease-in-out;
+    filter: drop-shadow(0 0 15px var(--hot-pink));
 }
 
-.eye-pupil {
-    width: 45px;
-    height: 45px;
-    background: #000;
-    border-radius: 50%;
-    position: relative;
-    box-shadow: 0 0 15px #00ffff;
-    border: 2px solid #550055;
-    transition: all 0.2s;
-}
-.eye-pupil::after {
-    content: '';
-    position: absolute;
-    top: 5px;
-    right: 8px;
-    width: 12px;
-    height: 12px;
-    background: white;
-    border-radius: 50%;
-    box-shadow: 0 0 8px white;
+.eye-left {
+    background-position: 0% 0%;
+    /* Top Left Eye */
 }
 
-#game-menu:hover .eye-pupil {
-    box-shadow: 0 0 25px #00ffff, 0 0 40px #ff00ff;
+.eye-right {
+    background-position: 100% 0%;
+    /* Top Right Eye */
+}
+
+/* Hover effect: Switch to the bottom row (glitched/closed eyes) */
+#game-menu:hover .eye-left {
+    background-position: 0% 100%;
+    /* Bottom Left Eye */
     transform: scale(1.1);
+    filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
+}
+
+#game-menu:hover .eye-right {
+    background-position: 100% 100%;
+    /* Bottom Right Eye */
+    transform: scale(1.1);
+    filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
 }
 
 @keyframes eyePulse {
-    0% { transform: scale(1); filter: brightness(1); }
-    100% { transform: scale(1.03); filter: brightness(1.2); box-shadow: 0 0 50px #ff00a0; }
+    0% {
+        transform: translateY(0) scale(1);
+        filter: brightness(1) drop-shadow(0 0 10px var(--hot-pink));
+    }
+
+    100% {
+        transform: translateY(-5px) scale(1.02);
+        filter: brightness(1.2) drop-shadow(0 0 30px var(--hot-pink));
+    }
 }
 
 .controls-hint {
@@ -187,6 +197,7 @@ h1.glitch .ampersand {
     gap: 10px;
     justify-content: center;
 }
+
 .controls-hint .diamond-small {
     color: #444;
 }
