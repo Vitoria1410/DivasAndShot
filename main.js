@@ -105,11 +105,19 @@ scene.add(ground);
 const textureLoader = new THREE.TextureLoader();
 let treeTexture = null;
 
+function initTrees() {
+    for (let i = 0; i < 80; i++) {
+        const x = (Math.random() - 0.5) * 200;
+        const y = (Math.random() - 0.5) * 200;
+        if (Math.abs(x) > 8 || Math.abs(y) > 8) createTree(x, y);
+    }
+}
+
 textureLoader.load(
     'tree.png',
-    (tex) => { treeTexture = tex; },
+    (tex) => { treeTexture = tex; initTrees(); },
     undefined,
-    () => { console.warn('tree.png não encontrado, usando árvores geométricas.'); }
+    () => { console.warn('tree.png não encontrado, usando árvores geométricas.'); initTrees(); }
 );
 
 function createTree(x, y) {
@@ -153,11 +161,7 @@ function createTree(x, y) {
     scene.add(group);
 }
 
-for (let i = 0; i < 80; i++) {
-    const x = (Math.random() - 0.5) * 200;
-    const y = (Math.random() - 0.5) * 200;
-    if (Math.abs(x) > 8 || Math.abs(y) > 8) createTree(x, y);
-}
+// Trees são criadas no callback do TextureLoader (acima)
 
 // --- PLAYER ---
 const playerGroup = new THREE.Group();
