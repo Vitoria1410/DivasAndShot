@@ -11,6 +11,7 @@ const PLAYER_SPEED = 0.15;
 const PLAYER_MAX_HP = 100;
 const DAMAGE_PER_HIT = 10;
 const DAMAGE_COOLDOWN_FRAMES = 90;
+const MAP_LIMIT = 95; // metade do mapa jogável (unidades)
 
 // --- STATE ---
 let score = 0;
@@ -47,18 +48,17 @@ renderer.setPixelRatio(window.devicePixelRatio);
 document.getElementById('canvas-container').appendChild(renderer.domElement);
 renderer.domElement.style.cursor = 'crosshair';
 
-// --- GROUND TEXTURE (Floresta Pixel Art) ---
+// TextureLoader compartilhado
+const textureLoader = new THREE.TextureLoader();
+
+// --- GROUND TEXTURE (PNG ou Procedural como fallback) ---
 function createForestTexture() {
     const size = 512;
     const canvas = document.createElement('canvas');
     canvas.width = size; canvas.height = size;
     const ctx = canvas.getContext('2d');
-
-    // Base verde escuro
     ctx.fillStyle = '#1c3a1c';
     ctx.fillRect(0, 0, size, size);
-
-    // Variação de grama (blocos pixelados)
     const bs = 8;
     for (let y = 0; y < size; y += bs) {
         for (let x = 0; x < size; x += bs) {
@@ -69,34 +69,26 @@ function createForestTexture() {
             }
         }
     }
-    // Manchas de terra/musgo
-    for (let i = 0; i < 120; i++) {
-        const gx = Math.floor(Math.random() * (size / bs)) * bs;
-        const gy = Math.floor(Math.random() * (size / bs)) * bs;
-        ctx.fillStyle = Math.random() < 0.5 ? '#0d1a0d' : '#152815';
-        ctx.fillRect(gx, gy, bs * 2, bs);
-    }
-    // Grama mais clara (detalhes)
-    for (let i = 0; i < 200; i++) {
-        const gx = Math.floor(Math.random() * (size / bs)) * bs;
-        const gy = Math.floor(Math.random() * (size / bs)) * bs;
-        ctx.fillStyle = Math.random() < 0.5 ? '#2d5a2d' : '#326632';
-        ctx.fillRect(gx, gy, bs, bs / 2);
-    }
-    // Flores neon (fadinhas da floresta)
     for (let i = 0; i < 80; i++) {
         const gx = Math.floor(Math.random() * (size / bs)) * bs;
         const gy = Math.floor(Math.random() * (size / bs)) * bs;
-        const fc = ['#ff00ff', '#cc00ff', '#ff66ff', '#00ffcc', '#ff00aa'];
+        const fc = ['#ff00ff', '#cc00ff', '#00ffcc'];
         ctx.fillStyle = fc[Math.floor(Math.random() * fc.length)];
         ctx.fillRect(gx, gy, bs / 2, bs / 2);
     }
-
     const tex = new THREE.CanvasTexture(canvas);
     tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
     tex.magFilter = tex.minFilter = THREE.NearestFilter;
     tex.repeat.set(30, 30);
     return tex;
+}
+
+function applyGroundTexture(tex) {
+    tex.wrapS = tex.wrapT = THREE.RepeatWrapping;
+    tex.magFilter = tex.minFilter = THREE.NearestFilter;
+    tex.repeat.set(20, 20);
+    ground.material.map = tex;
+    ground.material.needsUpdate = true;
 }
 
 const ground = new THREE.Mesh(
@@ -105,6 +97,14 @@ const ground = new THREE.Mesh(
 );
 ground.position.z = -1;
 scene.add(ground);
+
+// Tenta carregar ground.png; se existir, substitui o procedural
+textureLoader.load(
+    'ground.jpg',
+    (tex) => applyGroundTexture(tex),
+    undefined,
+    () => { /* usa textura procedural mesmo */ }
+);
 
 // --- SISTEMA DE PARTÍCULAS (Faíscas Neon) ---
 const PARTICLE_COUNT = 500;
@@ -155,13 +155,12 @@ function updateParticles() {
 }
 
 // --- ÁRVORES COM SPRITE PNG (em Bosques) ---
-const textureLoader = new THREE.TextureLoader();
 let treeTexture = null;
 
 function createTree(x, y) {
     const group = new THREE.Group();
     if (treeTexture) {
-        const size = 40 + Math.random() * 15;
+        const size = 22 + Math.random() * 10; // 22 a 32 unidades
         const treeMat = new THREE.MeshBasicMaterial({
             map: treeTexture, transparent: true, alphaTest: 0.1, depthWrite: false
         });
@@ -409,6 +408,10 @@ function updateMovement() {
         playerGroup.position.x += (mx / len) * PLAYER_SPEED;
         playerGroup.position.y += (my / len) * PLAYER_SPEED;
     }
+
+    // Limita o jogador dentro do mapa
+    playerGroup.position.x = THREE.MathUtils.clamp(playerGroup.position.x, -MAP_LIMIT, MAP_LIMIT);
+    playerGroup.position.y = THREE.MathUtils.clamp(playerGroup.position.y, -MAP_LIMIT, MAP_LIMIT);
 
     camera.position.x += (playerGroup.position.x - camera.position.x) * 0.08;
     camera.position.y += (playerGroup.position.y - camera.position.y) * 0.08;
