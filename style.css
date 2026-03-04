@@ -193,6 +193,88 @@ h1.glitch .ampersand {
     color: #444;
 }
 
+/* Inventory */
+#inventory {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 150;
+    background: rgba(0, 0, 0, 0.72);
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(5px);
+}
+
+.inventory-panel {
+    background: rgba(8, 0, 22, 0.97);
+    border: 2px solid rgba(0, 255, 255, 0.45);
+    border-radius: 16px;
+    padding: 30px 40px;
+    min-width: 400px;
+    box-shadow: 0 0 40px rgba(0, 255, 255, 0.25), 0 0 80px rgba(255, 0, 255, 0.1), inset 0 0 20px rgba(255, 0, 255, 0.04);
+}
+
+.inv-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 22px;
+    padding-bottom: 14px;
+    border-bottom: 1px solid rgba(255, 0, 255, 0.3);
+}
+
+.inv-title {
+    font-size: 1.3rem;
+    color: var(--neon-blue);
+    margin: 0;
+    letter-spacing: 3px;
+    text-shadow: 0 0 10px var(--neon-blue);
+}
+
+.inv-close {
+    color: #555;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.5rem;
+    letter-spacing: 1px;
+}
+
+.inv-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 12px;
+    margin-bottom: 20px;
+}
+
+.inv-slot {
+    aspect-ratio: 1;
+    background: rgba(255, 0, 255, 0.04);
+    border: 2px solid rgba(255, 0, 255, 0.25);
+    border-radius: 10px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s;
+    min-height: 90px;
+}
+
+.inv-slot:hover {
+    border-color: rgba(0, 255, 255, 0.55);
+    background: rgba(0, 255, 255, 0.06);
+    box-shadow: 0 0 12px rgba(0, 255, 255, 0.2);
+}
+
+.inv-empty-msg {
+    color: #333;
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.5rem;
+    text-align: center;
+    margin: 0;
+    letter-spacing: 1px;
+}
+
 /* Game Over Screen */
 #game-over {
     display: none;
