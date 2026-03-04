@@ -192,8 +192,8 @@ function createTree(x, y) {
         plane.position.set(0, size * 0.4, 0.5);
         group.add(plane);
 
-        // Colisor esférico no tronco da árvore
-        treeColliders.push({ x: x, y: y, radius: size * 0.15 });
+        // Colisor esférico reduzido e mais centralizado no tronco da árvore
+        treeColliders.push({ x: x, y: y + size * 0.06, radius: size * 0.06 });
     } else {
         const s = 1.8 + Math.random() * 1;
         const topColors = [0x1a4a1a, 0x1e5a1e, 0x224422];
@@ -236,25 +236,28 @@ textureLoader.load(
 // --- PLAYER ---
 const playerGroup = new THREE.Group();
 
-const playerMesh = new THREE.Mesh(
-    new THREE.CircleGeometry(1, 32),
-    new THREE.MeshBasicMaterial({ color: 0xff00ff })
-);
-playerGroup.add(playerMesh);
+// Visual da Personagem
+const playerMat = new THREE.MeshBasicMaterial({ color: 0xff00ff, transparent: true, alphaTest: 0.1 });
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), playerMat);
+playerVisual.position.set(0, 0.8, 0.2); // Fica em pé a partir do chão
+playerGroup.add(playerVisual);
 
-const innerMesh = new THREE.Mesh(
-    new THREE.CircleGeometry(0.5, 32),
-    new THREE.MeshBasicMaterial({ color: 0xffffff })
-);
-innerMesh.position.z = 0.05;
-playerGroup.add(innerMesh);
+textureLoader.load('player.png', (tex) => {
+    playerMat.map = tex;
+    playerMat.color.setHex(0xffffff); // Remove a cor sólida pink após carregar PNG
+    playerMat.needsUpdate = true;
+});
 
+// Grupo da Mira (só a arma gira!)
+const aimGroup = new THREE.Group();
 const gunMesh = new THREE.Mesh(
     new THREE.PlaneGeometry(0.35, 1.2),
     new THREE.MeshBasicMaterial({ color: 0x00ffff })
 );
+// Posição original da arma antes do offset
 gunMesh.position.set(0, 1.1, 0.1);
-playerGroup.add(gunMesh);
+aimGroup.add(gunMesh);
+playerGroup.add(aimGroup);
 
 // HP Bar
 const HP_BAR_WIDTH = 2.4;
@@ -262,12 +265,12 @@ const hpBarBg = new THREE.Mesh(
     new THREE.PlaneGeometry(HP_BAR_WIDTH + 0.1, 0.38),
     new THREE.MeshBasicMaterial({ color: 0x111111 })
 );
-hpBarBg.position.set(0, 1.85, 0.2);
+hpBarBg.position.set(0, 3.0, 0.5); // Movido para cima da cabeça do PNG
 playerGroup.add(hpBarBg);
 
 const hpMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(HP_BAR_WIDTH, 0.28), hpMat);
-hpBar.position.set(0, 1.85, 0.3);
+hpBar.position.set(0, 3.0, 0.51);
 playerGroup.add(hpBar);
 
 playerGroup.position.set(0, 0, 0);
@@ -474,8 +477,12 @@ function updateMovement() {
     const dy = worldMouse.y - playerGroup.position.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len > 0) {
-        playerGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
+        // Gira apenas a arma para o mouse
+        aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
+
+        // Vira a sprite da personagem para o lado que está atirando/mirando
+        playerVisual.scale.x = dx < 0 ? -1 : 1;
     }
 }
 
@@ -490,7 +497,7 @@ function animate() {
         updateParticles();
 
         if (damageCooldown > 0) damageCooldown--;
-        playerMesh.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
+        playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
 
         // IA dos Sapos: Patrulha <-> Perseguição
         enemies.forEach(enemy => {
