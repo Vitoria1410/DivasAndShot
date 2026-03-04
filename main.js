@@ -19,6 +19,7 @@ let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
 let isGameOver = false;
 let inventoryOpen = false;
+const treeColliders = [];
 const enemies = []; // { mesh, state, patrolDir, patrolTimer }
 const bullets = [];
 let gameStarted = false;
@@ -88,12 +89,14 @@ function applyGroundTexture(tex) {
     tex.magFilter = tex.minFilter = THREE.NearestFilter;
     tex.repeat.set(20, 20);
     ground.material.map = tex;
+    ground.material.color.setHex(0xaaaaaa); // Escurece o mapa multiplicando por cinza escuro
     ground.material.needsUpdate = true;
 }
 
 const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(MAP_LIMIT * 2 + 10, MAP_LIMIT * 2 + 10),
-    new THREE.MeshBasicMaterial({ map: createForestTexture() })
+    // Cor cinza escura para baixar o brilho/contraste do mapa
+    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0x777777 })
 );
 ground.position.z = -1;
 scene.add(ground);
@@ -139,7 +142,7 @@ function createParticles() {
     for (let i = 0; i < PARTICLE_COUNT; i++) {
         particlePositions[i * 3] = (Math.random() - 0.5) * 250;
         particlePositions[i * 3 + 1] = (Math.random() - 0.5) * 250;
-        particlePositions[i * 3 + 2] = 0.4;
+        particlePositions[i * 3 + 2] = 3.0; // Bem acima das árvores
         particleSpeeds[i] = 0.01 + Math.random() * 0.025;
         if (Math.random() < 0.5) {
             colors[i * 3] = 1; colors[i * 3 + 1] = 0; colors[i * 3 + 2] = 1; // magenta
@@ -185,8 +188,12 @@ function createTree(x, y) {
             map: treeTexture, transparent: true, alphaTest: 0.1, depthWrite: false
         });
         const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 1.15), treeMat);
-        plane.position.z = 0.5;
+        // Eleva a arte para a raiz (base do tronco) ficar no Y = 0 do grupo
+        plane.position.set(0, size * 0.4, 0.5);
         group.add(plane);
+
+        // Colisor esférico no tronco da árvore
+        treeColliders.push({ x: x, y: y, radius: size * 0.15 });
     } else {
         const s = 1.8 + Math.random() * 1;
         const topColors = [0x1a4a1a, 0x1e5a1e, 0x224422];
@@ -194,8 +201,10 @@ function createTree(x, y) {
             new THREE.CircleGeometry(s, 6),
             new THREE.MeshBasicMaterial({ color: topColors[Math.floor(Math.random() * topColors.length)] })
         ));
+        treeColliders.push({ x: x, y: y, radius: s });
     }
-    group.position.set(x, y, 0);
+    // Determina o Z baseado no Y (Depth Sorting - árvores na frente sobrepõem as de trás)
+    group.position.set(x, y, -y * 0.001);
     scene.add(group);
 }
 
@@ -297,11 +306,9 @@ function createFrog() {
     });
 
     const angle = Math.random() * Math.PI * 2;
-    frog.position.set(
-        playerGroup.position.x + Math.cos(angle) * SPAWN_RADIUS,
-        playerGroup.position.y + Math.sin(angle) * SPAWN_RADIUS,
-        0
-    );
+    const fx = playerGroup.position.x + Math.cos(angle) * SPAWN_RADIUS;
+    const fy = playerGroup.position.y + Math.sin(angle) * SPAWN_RADIUS;
+    frog.position.set(fx, fy, -fy * 0.001); // Depth sorting
 
     scene.add(frog);
     enemies.push({
@@ -318,7 +325,7 @@ function shoot() {
         new THREE.CircleGeometry(0.18, 8),
         new THREE.MeshBasicMaterial({ color: 0x00ffff })
     );
-    bullet.position.set(playerGroup.position.x, playerGroup.position.y, 0);
+    bullet.position.set(playerGroup.position.x, playerGroup.position.y, 1.0); // Z alto pra passar sobre coisas
     bullets.push({ mesh: bullet, dir: aimDir.clone() });
     scene.add(bullet);
 }
@@ -423,15 +430,39 @@ function updateMovement() {
     if (keys['KeyA']) mx -= 1;
     if (keys['KeyD']) mx += 1;
 
+    let nextX = playerGroup.position.x;
+    let nextY = playerGroup.position.y;
+
     if (mx !== 0 || my !== 0) {
         const len = Math.sqrt(mx * mx + my * my);
-        playerGroup.position.x += (mx / len) * PLAYER_SPEED;
-        playerGroup.position.y += (my / len) * PLAYER_SPEED;
+        nextX += (mx / len) * PLAYER_SPEED;
+        nextY += (my / len) * PLAYER_SPEED;
+    }
+
+    // --- SISTEMA DE COLISÃO / ANTI-GRAVITY ---
+    // Resolução de colisão com as árvores (círculos)
+    const playerRadius = 0.8;
+    for (const tree of treeColliders) {
+        const dx = nextX - tree.x;
+        const dy = nextY - tree.y;
+        const distSq = dx * dx + dy * dy;
+        const minRadiusSq = (playerRadius + tree.radius) * (playerRadius + tree.radius);
+
+        // Se entrou na raiz da árvore, afasta suavemente
+        if (distSq < minRadiusSq && distSq > 0) {
+            const dist = Math.sqrt(distSq);
+            const overlap = (playerRadius + tree.radius) - dist;
+            nextX += (dx / dist) * overlap;
+            nextY += (dy / dist) * overlap;
+        }
     }
 
     // Limita o jogador dentro do mapa
-    playerGroup.position.x = THREE.MathUtils.clamp(playerGroup.position.x, -MAP_LIMIT, MAP_LIMIT);
-    playerGroup.position.y = THREE.MathUtils.clamp(playerGroup.position.y, -MAP_LIMIT, MAP_LIMIT);
+    playerGroup.position.x = THREE.MathUtils.clamp(nextX, -MAP_LIMIT, MAP_LIMIT);
+    playerGroup.position.y = THREE.MathUtils.clamp(nextY, -MAP_LIMIT, MAP_LIMIT);
+
+    // Depth Sorting pelo eixo Y da personagem
+    playerGroup.position.z = -playerGroup.position.y * 0.001;
 
     camera.position.x += (playerGroup.position.x - camera.position.x) * 0.08;
     camera.position.y += (playerGroup.position.y - camera.position.y) * 0.08;
@@ -474,6 +505,7 @@ function animate() {
                 const angle = Math.atan2(dy, dx);
                 frog.position.x += Math.cos(angle) * ENEMY_SPEED;
                 frog.position.y += Math.sin(angle) * ENEMY_SPEED;
+                frog.position.z = -frog.position.y * 0.001;
                 frog.rotation.z = angle - Math.PI / 2;
 
                 // Dano ao player
@@ -492,6 +524,7 @@ function animate() {
                 }
                 frog.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED;
                 frog.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED;
+                frog.position.z = -frog.position.y * 0.001;
                 // Sacudida leve (sapo descansando)
                 frog.rotation.z = Math.sin(Date.now() * 0.002 + enemy.patrolDir) * 0.3;
             }
