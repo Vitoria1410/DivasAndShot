@@ -12,6 +12,10 @@ const PLAYER_MAX_HP = 100;
 const DAMAGE_PER_HIT = 10;
 const DAMAGE_COOLDOWN_FRAMES = 90;
 const MAP_LIMIT = 95; // metade do mapa jogável (unidades)
+const ENEMY_MAX_HP = 50;
+const SWORD_DAMAGE = 25;
+const SWORD_RANGE = 4.5;
+const GUN_DAMAGE = 15;
 
 // --- STATE ---
 let score = 0;
@@ -26,6 +30,12 @@ let gameStarted = false;
 const mouse = new THREE.Vector2();
 const worldMouse = new THREE.Vector3();
 let aimDir = new THREE.Vector3(0, 1, 0);
+
+// Weapon state
+const WEAPONS = ['GUN', 'SWORD'];
+let currentWeaponIndex = 0;
+let canSlash = true;
+let swordMesh;
 
 const keys = {};
 window.addEventListener('keydown', (e) => { keys[e.code] = true; });
@@ -257,6 +267,24 @@ const gunMesh = new THREE.Mesh(
 // Posição original da arma antes do offset
 gunMesh.position.set(0, 1.1, 0.1);
 aimGroup.add(gunMesh);
+
+// Espada (invisível no começo)
+swordMesh = new THREE.Group();
+const swordBlade = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.4, 2.5),
+    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
+);
+swordBlade.position.set(0, 1.2, 0);
+swordMesh.add(swordBlade);
+const swordHandle = new THREE.Mesh(
+    new THREE.PlaneGeometry(0.2, 0.6),
+    new THREE.MeshBasicMaterial({ color: 0x555555 })
+);
+swordHandle.position.set(0, 0, 0);
+swordMesh.add(swordHandle);
+swordMesh.visible = false;
+aimGroup.add(swordMesh);
+
 playerGroup.add(aimGroup);
 
 // HP Bar
@@ -308,6 +336,21 @@ function createFrog() {
         frog.add(eye);
     });
 
+    // Barra de Vida do Sapo
+    const enemyHpBg = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.6, 0.15),
+        new THREE.MeshBasicMaterial({ color: 0x111111 })
+    );
+    enemyHpBg.position.set(0, 1.4, 0.2);
+    frog.add(enemyHpBg);
+
+    const enemyHpBar = new THREE.Mesh(
+        new THREE.PlaneGeometry(1.6, 0.1),
+        new THREE.MeshBasicMaterial({ color: 0x00ff00 })
+    );
+    enemyHpBar.position.set(0, 1.4, 0.21);
+    frog.add(enemyHpBar);
+
     const angle = Math.random() * Math.PI * 2;
     const fx = playerGroup.position.x + Math.cos(angle) * SPAWN_RADIUS;
     const fy = playerGroup.position.y + Math.sin(angle) * SPAWN_RADIUS;
@@ -316,14 +359,71 @@ function createFrog() {
     scene.add(frog);
     enemies.push({
         mesh: frog,
+        hpBar: enemyHpBar,
+        hp: ENEMY_MAX_HP,
         state: 'patrol',
         patrolDir: Math.random() * Math.PI * 2,
         patrolTimer: Math.floor(Math.random() * 120) + 60
     });
 }
 
+// --- ARMAS & MECÂNICAS ---
+function switchWeapon(direction) {
+    if (direction > 0) currentWeaponIndex = (currentWeaponIndex + 1) % WEAPONS.length;
+    else currentWeaponIndex = (currentWeaponIndex - 1 + WEAPONS.length) % WEAPONS.length;
+
+    const currentWeapon = WEAPONS[currentWeaponIndex];
+    document.getElementById('weapon-name').innerText = currentWeapon;
+
+    gunMesh.visible = (currentWeapon === 'GUN');
+    swordMesh.visible = (currentWeapon === 'SWORD');
+}
+
+function updateEnemyHP(enemy, damage) {
+    enemy.hp -= damage;
+    const ratio = Math.max(0, enemy.hp / ENEMY_MAX_HP);
+    enemy.hpBar.scale.x = ratio;
+    enemy.hpBar.position.x = -(1.6 * (1 - ratio)) / 2;
+    enemy.hpBar.material.color.set(ratio > 0.5 ? 0x00ff00 : ratio > 0.25 ? 0xffff00 : 0xff0000);
+    return enemy.hp <= 0;
+}
+
+function slash() {
+    if (!canSlash) return;
+    canSlash = false;
+
+    // Efeito visual de swing
+    swordMesh.rotation.z = -1.5;
+    setTimeout(() => {
+        swordMesh.rotation.z = 1.5;
+
+        // Área de hit na frente do player
+        const hitZone = new THREE.Vector3().copy(playerGroup.position).addScaledVector(aimDir, 2.5);
+
+        for (let j = enemies.length - 1; j >= 0; j--) {
+            if (enemies[j].mesh.position.distanceTo(hitZone) < 3.5) {
+                if (updateEnemyHP(enemies[j], SWORD_DAMAGE)) {
+                    scene.remove(enemies[j].mesh); enemies.splice(j, 1);
+                    score += 100;
+                    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
+                    createFrog();
+                }
+            }
+        }
+
+        setTimeout(() => {
+            swordMesh.rotation.z = 0;
+            canSlash = true;
+        }, 150);
+    }, 50);
+}
+
 // --- TIRO ---
 function shoot() {
+    if (WEAPONS[currentWeaponIndex] === 'SWORD') {
+        slash();
+        return;
+    }
     const bullet = new THREE.Mesh(
         new THREE.CircleGeometry(0.18, 8),
         new THREE.MeshBasicMaterial({ color: 0x00ffff })
@@ -331,6 +431,10 @@ function shoot() {
     bullet.position.set(playerGroup.position.x, playerGroup.position.y, 1.0); // Z alto pra passar sobre coisas
     bullets.push({ mesh: bullet, dir: aimDir.clone() });
     scene.add(bullet);
+
+    // Cooldown/Recuo visual da arma
+    gunMesh.position.y -= 0.3;
+    setTimeout(() => { gunMesh.position.y += 0.3; }, 60);
 }
 
 function updateBullets() {
@@ -344,11 +448,15 @@ function updateBullets() {
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (b.mesh.position.distanceTo(enemies[j].mesh.position) < 1.5) {
-                scene.remove(enemies[j].mesh); enemies.splice(j, 1);
+                const isDead = updateEnemyHP(enemies[j], GUN_DAMAGE);
                 scene.remove(b.mesh); bullets.splice(i, 1);
-                score += 100;
-                document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                createFrog();
+
+                if (isDead) {
+                    scene.remove(enemies[j].mesh); enemies.splice(j, 1);
+                    score += 100;
+                    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
+                    createFrog();
+                }
                 break;
             }
         }
@@ -406,8 +514,11 @@ window.addEventListener('mousedown', (e) => {
     if (!gameStarted || inventoryOpen) return;
     if (e.target.closest('#game-menu') || e.target.closest('#game-over')) return;
     shoot();
-    gunMesh.position.y -= 0.2;
-    setTimeout(() => { gunMesh.position.y += 0.2; }, 60);
+});
+
+window.addEventListener('wheel', (e) => {
+    if (!gameStarted || inventoryOpen) return;
+    switchWeapon(e.deltaY);
 });
 
 window.addEventListener('keydown', (e) => {

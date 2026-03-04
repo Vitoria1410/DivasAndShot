@@ -364,6 +364,22 @@ h1.glitch .ampersand {
     font-family: 'Press Start 2P', cursive;
 }
 
+.weapon-container {
+    padding: 0 22px;
+    color: var(--neon-blue);
+    font-size: 1.1rem;
+    font-weight: 900;
+    text-shadow: 2px 2px 0px var(--black);
+    font-family: 'Press Start 2P', cursive;
+    margin-top: -10px;
+    letter-spacing: 2px;
+}
+
+#weapon-name {
+    color: var(--hot-pink);
+    text-shadow: 0 0 10px var(--hot-pink);
+}
+
 .crosshair {
     position: fixed;
     top: 50%;
