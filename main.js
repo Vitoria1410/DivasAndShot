@@ -106,10 +106,10 @@ const textureLoader = new THREE.TextureLoader();
 let treeTexture = null;
 
 function initTrees() {
-    for (let i = 0; i < 80; i++) {
-        const x = (Math.random() - 0.5) * 200;
-        const y = (Math.random() - 0.5) * 200;
-        if (Math.abs(x) > 8 || Math.abs(y) > 8) createTree(x, y);
+    for (let i = 0; i < 160; i++) {
+        const x = (Math.random() - 0.5) * 220;
+        const y = (Math.random() - 0.5) * 220;
+        if (Math.abs(x) > 10 || Math.abs(y) > 10) createTree(x, y);
     }
 }
 
@@ -123,24 +123,17 @@ textureLoader.load(
 function createTree(x, y) {
     const group = new THREE.Group();
 
-    // Sombra circular no chão
-    const shadowGeo = new THREE.CircleGeometry(1.4, 12);
-    const shadowMat = new THREE.MeshBasicMaterial({ color: 0x050f05, transparent: true, opacity: 0.55 });
-    const shadow = new THREE.Mesh(shadowGeo, shadowMat);
-    shadow.position.set(0.3, -0.3, 0.01);
-    group.add(shadow);
-
     if (treeTexture) {
-        // Sprite da árvore PNG (vertical, virada pra cima)
-        const size = 2.5 + Math.random() * 1.5;
+        // Sprite GRANDE da árvore PNG
+        const size = 40 + Math.random() * 15; // 40 a 55 unidades
         const treeMat = new THREE.MeshBasicMaterial({
             map: treeTexture,
             transparent: true,
-            alphaTest: 0.15,
+            alphaTest: 0.1,
             depthWrite: false,
         });
         const treePlane = new THREE.Mesh(
-            new THREE.PlaneGeometry(size, size * 1.2),
+            new THREE.PlaneGeometry(size, size * 1.15),
             treeMat
         );
         treePlane.position.z = 0.5;
