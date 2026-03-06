@@ -116,6 +116,9 @@ function applyGroundTexture(tex) {
     ground.material.map = tex;
     ground.material.color.setHex(0xffffff); // Restaura brilho total
     ground.material.needsUpdate = true;
+
+    // Força a renderização do material novo trocando a textura completamente em tempo de execução
+    ground.material = new THREE.MeshBasicMaterial({ map: tex, color: 0xffffff });
 }
 
 const ground = new THREE.Mesh(
@@ -684,12 +687,18 @@ function updateMovement() {
         // Prioridade lateral na animação se houver movimento Horizontal
         if (mx !== 0) {
             playerDirection = 'side';
-            playerVisual.scale.x = mx < 0 ? -1 : 1;
+            // O PNG nativo olha para esquerda: scale 1 = Esquerda, scale -1 = Direita.
+            playerVisual.scale.x = mx < 0 ? 1 : -1;
         } else if (my > 0) {
             playerDirection = 'back';
+            playerVisual.scale.x = 1; // Reseta espelhamento
         } else {
             playerDirection = 'front';
+            playerVisual.scale.x = 1; // Reseta espelhamento
         }
+
+        // Ajusta o offset da imagem (eixo X) dinamicamente dependendo da escala, pra ficar certinho no centro
+        playerVisual.position.x = playerVisual.scale.x === 1 ? -0.3 : 0.3;
     } else {
         playerState = 'idle';
     }
@@ -737,13 +746,6 @@ function updateMovement() {
         // Gira apenas a arma para o mouse
         aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
-
-        // O PNG do sidewalk olha para a ESQUERDA naturalmente.
-        // Se ela atira para a direita (dx > 0), precisamos ESPELHAR (scale = -1).
-        // Se ela atira para a esquerda (dx < 0), mantemos normal (scale = 1).
-        playerVisual.scale.x = dx < 0 ? 1 : -1;
-        // Centralização do PNG único (inverte o offset dependendo de para onde ela está olhando fisicamente)
-        playerVisual.position.x = playerVisual.scale.x === 1 ? -0.3 : 0.3;
     }
 }
 
