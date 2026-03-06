@@ -268,21 +268,30 @@ textureLoader.load(
     () => { initTrees(); }
 );
 
-// --- PEDRAS ---
-textureLoader.load('rock.JPG', (tex) => {
-    for (let i = 0; i < 40; i++) {
-        const rx = (Math.random() - 0.5) * 240;
-        const ry = (Math.random() - 0.5) * 240;
-        if (Math.abs(rx) > 15 || Math.abs(ry) > 15) { // Longe do spawn
-            const rs = 1.0 + Math.random() * 1.5;
-            const rock = new THREE.Mesh(
-                new THREE.PlaneGeometry(rs * 2, rs * 2),
-                new THREE.MeshBasicMaterial({ map: tex, transparent: true })
-            );
-            rock.position.set(rx, ry, -ry * 0.01 + 0.001);
-            scene.add(rock);
+// --- PEDRAS E GRAMAS ---
+const envElements = [
+    { file: 'pedra1.png', count: 60, size: 2.0 },
+    { file: 'pedra2.png', count: 60, size: 2.0 },
+    { file: 'grama1.png', count: 120, size: 1.5 },
+    { file: 'grama2.png', count: 120, size: 1.5 }
+];
+
+envElements.forEach(item => {
+    textureLoader.load(item.file, (tex) => {
+        for (let i = 0; i < item.count; i++) {
+            const rx = (Math.random() - 0.5) * 240;
+            const ry = (Math.random() - 0.5) * 240;
+            if (Math.abs(rx) > 15 || Math.abs(ry) > 15) { // Longe do spawn
+                const rs = item.size + (Math.random() * 0.5);
+                const mesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(rs * 1.2, rs),
+                    new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.1, depthWrite: false })
+                );
+                mesh.position.set(rx, ry, -ry * 0.01 + 0.001);
+                scene.add(mesh);
+            }
         }
-    }
+    });
 });
 
 // --- PLAYER ---
@@ -310,8 +319,8 @@ const geometries = {
     'side': new THREE.PlaneGeometry(2.1, 5.3),
     'aim': new THREE.PlaneGeometry(3.2, 5.3),
     'attack': new THREE.PlaneGeometry(6.2, 5.3),
-    'idle': new THREE.PlaneGeometry(2.2, 5.3),
-    'idleback': new THREE.PlaneGeometry(2.2, 5.3)
+    'idle': new THREE.PlaneGeometry(7.95, 5.3),
+    'idleback': new THREE.PlaneGeometry(2.33, 5.3)
 };
 
 Object.values(playerTextures).forEach(tex => {
@@ -568,7 +577,7 @@ function shoot() {
             new THREE.CircleGeometry(0.18, 8),
             new THREE.MeshBasicMaterial({ color: 0x00ffff })
         );
-        bullet.position.set(playerGroup.position.x, playerGroup.position.y, 1.0); // Z alto pra passar sobre coisas
+        bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0); // Z alto pra passar sobre coisas
         bullets.push({ mesh: bullet, dir: aimDir.clone() });
         scene.add(bullet);
 
