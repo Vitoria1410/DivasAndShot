@@ -91,7 +91,7 @@ function createForestTexture() {
     for (let y = 0; y < size; y += bs) {
         for (let x = 0; x < size; x += bs) {
             if (Math.random() < 0.5) {
-                const colors = ['#163016', '#1e401e', '#224422', '#1a3a1a', '#1f4520'];
+                const colors = ['#0a1a0a', '#0d220d', '#112211', '#091509', '#0f200f'];
                 ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
                 ctx.fillRect(x, y, bs, bs);
             }
@@ -116,14 +116,14 @@ function applyGroundTexture(tex) {
     tex.magFilter = tex.minFilter = THREE.NearestFilter;
     tex.repeat.set(20, 20);
     ground.material.map = tex;
-    ground.material.color.setHex(0xaaaaaa); // Escurece o mapa multiplicando por cinza escuro
+    ground.material.color.setHex(0x333333); // Escurece o mapa significativamente
     ground.material.needsUpdate = true;
 }
 
 const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(MAP_LIMIT * 2 + 10, MAP_LIMIT * 2 + 10),
     // Cor cinza escura para baixar o brilho/contraste do mapa
-    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0x777777 })
+    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0x1a1a1a })
 );
 ground.position.z = -1;
 scene.add(ground);
@@ -219,8 +219,8 @@ function createTree(x, y) {
         plane.position.set(0, size * 0.4, 0.5);
         group.add(plane);
 
-        // Colisor esférico reduzido e mais centralizado no tronco da árvore
-        treeColliders.push({ x: x, y: y + size * 0.06, radius: size * 0.06 });
+        // Colisor esférico na base do tronco
+        treeColliders.push({ x: x, y: y, radius: size * 0.08 });
     } else {
         const s = 1.8 + Math.random() * 1;
         const topColors = [0x1a4a1a, 0x1e5a1e, 0x224422];
@@ -231,7 +231,7 @@ function createTree(x, y) {
         treeColliders.push({ x: x, y: y, radius: s });
     }
     // Determina o Z baseado no Y (Depth Sorting - árvores na frente sobrepõem as de trás)
-    group.position.set(x, y, -y * 0.001);
+    group.position.set(x, y, -y * 0.01);
     scene.add(group);
 }
 
@@ -264,9 +264,9 @@ textureLoader.load(
 const playerGroup = new THREE.Group();
 
 // Visual da Personagem
-const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.1 });
-const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), playerMat);
-playerVisual.position.set(0, 0.8, 0.2);
+const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.5 });
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), playerMat);
+playerVisual.position.set(0, 1.2, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
@@ -323,7 +323,7 @@ playerGroup.add(hpBarBg);
 
 const hpMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(HP_BAR_WIDTH, 0.28), hpMat);
-hpBar.position.set(0, 3.0, 0.51);
+hpBar.position.set(0, 3.2, 0.51);
 playerGroup.add(hpBar);
 
 playerGroup.position.set(0, 0, 0);
@@ -711,8 +711,8 @@ function updateMovement() {
         if (distSq < minRadiusSq && distSq > 0) {
             const dist = Math.sqrt(distSq);
             const overlap = (playerRadius + tree.radius) - dist;
-            nextX += (dx / dist) * overlap;
-            nextY += (dy / dist) * overlap;
+            nextX += (dx / dist) * overlap * 1.5;
+            nextY += (dy / dist) * overlap * 1.5;
         }
     }
 
@@ -721,7 +721,7 @@ function updateMovement() {
     playerGroup.position.y = THREE.MathUtils.clamp(nextY, -MAP_LIMIT, MAP_LIMIT);
 
     // Depth Sorting pelo eixo Y da personagem
-    playerGroup.position.z = -playerGroup.position.y * 0.001;
+    playerGroup.position.z = -playerGroup.position.y * 0.01 + 0.005;
 
     camera.position.x += (playerGroup.position.x - camera.position.x) * 0.08;
     camera.position.y += (playerGroup.position.y - camera.position.y) * 0.08;
@@ -739,6 +739,8 @@ function updateMovement() {
 
         // Vira a sprite da personagem para o lado que está atirando/mirando
         playerVisual.scale.x = dx < 0 ? -1 : 1;
+        // Pequeno ajuste de offset X dependendo da direção para compensar o PNG descentralizado
+        playerVisual.position.x = dx < 0 ? 0.2 : -0.2;
     }
 }
 
