@@ -116,14 +116,14 @@ function applyGroundTexture(tex) {
     tex.magFilter = tex.minFilter = THREE.NearestFilter;
     tex.repeat.set(20, 20);
     ground.material.map = tex;
-    ground.material.color.setHex(0x333333); // Escurece o mapa significativamente
+    ground.material.color.setHex(0xffffff); // Restaura brilho total
     ground.material.needsUpdate = true;
 }
 
 const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(MAP_LIMIT * 2 + 10, MAP_LIMIT * 2 + 10),
     // Cor cinza escura para baixar o brilho/contraste do mapa
-    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0x1a1a1a })
+    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0xffffff })
 );
 ground.position.z = -1;
 scene.add(ground);
@@ -264,9 +264,9 @@ textureLoader.load(
 const playerGroup = new THREE.Group();
 
 // Visual da Personagem
-const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.5 });
-const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), playerMat);
-playerVisual.position.set(0, 1.2, 0.1);
+const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.2 });
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 4.4), playerMat);
+playerVisual.position.set(0, 1.8, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
@@ -737,10 +737,9 @@ function updateMovement() {
         aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
 
-        // Vira a sprite da personagem para o lado que está atirando/mirando
         playerVisual.scale.x = dx < 0 ? -1 : 1;
-        // Pequeno ajuste de offset X dependendo da direção para compensar o PNG descentralizado
-        playerVisual.position.x = dx < 0 ? 0.2 : -0.2;
+        // Ajuste mais agressivo para centralizar a personagem se o PNG estiver deslocado
+        playerVisual.position.x = dx < 0 ? 0.6 : -0.6;
     }
 }
 
