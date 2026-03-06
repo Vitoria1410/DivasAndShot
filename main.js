@@ -91,7 +91,7 @@ function createForestTexture() {
     for (let y = 0; y < size; y += bs) {
         for (let x = 0; x < size; x += bs) {
             if (Math.random() < 0.5) {
-                const colors = ['#0a1a0a', '#0d220d', '#112211', '#091509', '#0f200f'];
+                const colors = ['#163016', '#1e401e', '#224422', '#1a3a1a', '#1f4520'];
                 ctx.fillStyle = colors[Math.floor(Math.random() * colors.length)];
                 ctx.fillRect(x, y, bs, bs);
             }
@@ -264,9 +264,9 @@ textureLoader.load(
 const playerGroup = new THREE.Group();
 
 // Visual da Personagem
-const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.2 });
-const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 4.4), playerMat);
-playerVisual.position.set(0, 1.8, 0.1);
+const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.1 });
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), playerMat);
+playerVisual.position.set(0, 1.2, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
@@ -738,8 +738,8 @@ function updateMovement() {
         aimDir.set(dx / len, dy / len, 0);
 
         playerVisual.scale.x = dx < 0 ? -1 : 1;
-        // Ajuste mais agressivo para centralizar a personagem se o PNG estiver deslocado
-        playerVisual.position.x = dx < 0 ? 0.6 : -0.6;
+        // Ajuste de centralização (ajuste fino conforme o PNG original)
+        playerVisual.position.x = dx < 0 ? 0.4 : -0.4;
     }
 }
 
