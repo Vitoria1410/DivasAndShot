@@ -59,14 +59,15 @@ html {
     width: 220px;
     height: 130px;
     background-image: url('eyes_sprite.png');
-    background-size: 440px 260px;
-    /* 2x o tamanho de cada olho (220x130) */
+    background-size: 440px 390px;
+    /* 2 colunas (olho esquerdo/direito) e 3 linhas (Aberto, Meio Fechado, Fechado) */
     background-repeat: no-repeat;
     animation: eyePulse 3s infinite alternate;
-    transition: all 0.3s ease-in-out;
+    transition: filter 0.3s ease-in-out, transform 0.3s ease-in-out;
     filter: drop-shadow(0 0 15px var(--hot-pink));
 }
 
+/* Estados passivos */
 .eye-left {
     background-position: 0% 0%;
 }
@@ -75,16 +76,71 @@ html {
     background-position: 100% 0%;
 }
 
+/* Animação do Hover (Aberto -> Meio -> Fechado -> Meio -> Aberto) */
 .eyes-bg:hover .eye-left {
-    background-position: 0% 100%;
-    transform: scale(1.08);
     filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
+    animation: eyePulse 3s infinite alternate, eyeBlinkLeft 1.2s infinite;
 }
 
 .eyes-bg:hover .eye-right {
-    background-position: 100% 100%;
-    transform: scale(1.08);
     filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
+    animation: eyePulse 3s infinite alternate, eyeBlinkRight 1.2s infinite;
+}
+
+@keyframes eyeBlinkLeft {
+
+    0%,
+    15% {
+        background-position: 0% 0%;
+    }
+
+    16%,
+    35% {
+        background-position: 0% 50%;
+    }
+
+    36%,
+    65% {
+        background-position: 0% 100%;
+    }
+
+    66%,
+    85% {
+        background-position: 0% 50%;
+    }
+
+    86%,
+    100% {
+        background-position: 0% 0%;
+    }
+}
+
+@keyframes eyeBlinkRight {
+
+    0%,
+    15% {
+        background-position: 100% 0%;
+    }
+
+    16%,
+    35% {
+        background-position: 100% 50%;
+    }
+
+    36%,
+    65% {
+        background-position: 100% 100%;
+    }
+
+    66%,
+    85% {
+        background-position: 100% 50%;
+    }
+
+    86%,
+    100% {
+        background-position: 100% 0%;
+    }
 }
 
 @keyframes eyePulse {

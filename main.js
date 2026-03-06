@@ -265,14 +265,25 @@ textureLoader.load(
 const playerGroup = new THREE.Group();
 
 const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.1 });
-const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 4.4), playerMat);
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 5.3), playerMat);
 playerVisual.position.set(0, 1.8, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
     'front': textureLoader.load('walkfront.png.png'),
     'back': textureLoader.load('backwalk.png.png'),
-    'side': textureLoader.load('sidewalk.png.png')
+    'side': textureLoader.load('sidewalk.png.png'),
+    'aim': textureLoader.load('gunaim.png'),
+    'attack': textureLoader.load('attack.png')
+};
+
+// Geometrias dinâmicas para ajustar corretamente a distorção de cada PNG
+const geometries = {
+    'front': new THREE.PlaneGeometry(2.2, 5.3),
+    'back': new THREE.PlaneGeometry(2.2, 5.3),
+    'side': new THREE.PlaneGeometry(2.1, 5.3),
+    'aim': new THREE.PlaneGeometry(3.2, 5.3),
+    'attack': new THREE.PlaneGeometry(6.2, 5.3)
 };
 
 Object.values(playerTextures).forEach(tex => {
@@ -283,31 +294,14 @@ Object.values(playerTextures).forEach(tex => {
 playerMat.map = playerTextures['front'];
 playerMat.needsUpdate = true;
 
-// Grupo da Mira (só a arma gira!)
+// Grupo da Mira invisível (só para lógica do tiro)
 const aimGroup = new THREE.Group();
-const gunMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.35, 1.2),
-    new THREE.MeshBasicMaterial({ color: 0x00ffff })
-);
-// Posição original da arma antes do offset
+const gunMesh = new THREE.Mesh(); // Forma e material removidos a pedido do usuário
 gunMesh.position.set(0, 1.1, 0.1);
 aimGroup.add(gunMesh);
 
-// Espada (invisível no começo)
+// Espada invisível 
 swordMesh = new THREE.Group();
-const swordBlade = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 2.5),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
-);
-swordBlade.position.set(0, 1.2, 0);
-swordMesh.add(swordBlade);
-const swordHandle = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.2, 0.6),
-    new THREE.MeshBasicMaterial({ color: 0x555555 })
-);
-swordHandle.position.set(0, 0, 0);
-swordMesh.add(swordHandle);
-swordMesh.visible = false;
 aimGroup.add(swordMesh);
 
 playerGroup.add(aimGroup);
@@ -482,19 +476,6 @@ function equipSlot(index) {
             if (i === currentWeaponIndex) slotEl.classList.add('active');
             else slotEl.classList.remove('active');
         }
-    }
-
-    const currentWeapon = HOTBAR[currentWeaponIndex];
-    if (currentWeapon === 'GUN') {
-        gunMesh.visible = true;
-        swordMesh.visible = false;
-    } else if (currentWeapon === 'SWORD') {
-        gunMesh.visible = false;
-        swordMesh.visible = true;
-    } else {
-        // Mãos livres / Vazio
-        gunMesh.visible = false;
-        swordMesh.visible = false;
     }
 }
 
@@ -725,15 +706,25 @@ function updateMovement() {
             playerVisual.scale.x = 1; // Reseta espelhamento
         }
 
-        // Ajusta o offset da imagem (eixo X) dinamicamente dependendo da escala, pra ficar certinho no centro
         playerVisual.position.x = playerVisual.scale.x === 1 ? -0.3 : 0.3;
     } else {
         playerState = 'idle';
     }
 
-    // Troca de textura
-    if (playerMat.map !== playerTextures[playerDirection]) {
-        playerMat.map = playerTextures[playerDirection];
+    let currentSpriteName = playerState === 'idle' ? 'front' : playerDirection;
+    const weapon = HOTBAR[currentWeaponIndex];
+    if (weapon === 'SWORD') {
+        currentSpriteName = 'attack';
+    } else if (weapon === 'GUN') {
+        currentSpriteName = 'aim';
+    }
+
+    // Troca de Textura e Geometria apropriada para não esticar
+    if (playerMat.map !== playerTextures[currentSpriteName]) {
+        playerMat.map = playerTextures[currentSpriteName];
+        if (geometries[currentSpriteName]) {
+            playerVisual.geometry = geometries[currentSpriteName];
+        }
     }
 
     // --- SISTEMA DE COLISÃO / ANTI-GRAVITY ---
@@ -774,6 +765,18 @@ function updateMovement() {
         // Gira apenas a arma para o mouse
         aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
+
+        const weapon = HOTBAR[currentWeaponIndex];
+        if (weapon) {
+            // As imagens originais "target" parecem mirar para frente/direita. 
+            // Precisamos espelhar caso o mouse aponte para a esquerda.
+            playerVisual.scale.x = dx < 0 ? -1 : 1;
+            if (weapon === 'GUN') {
+                playerVisual.position.x = dx < 0 ? -0.4 : 0.4;
+            } else {
+                playerVisual.position.x = dx < 0 ? -0.6 : 0.6;
+            }
+        }
     }
 }
 
