@@ -315,12 +315,12 @@ const hpBarBg = new THREE.Mesh(
     new THREE.PlaneGeometry(HP_BAR_WIDTH + 0.1, 0.38),
     new THREE.MeshBasicMaterial({ color: 0x111111 })
 );
-hpBarBg.position.set(0, 3.0, 0.5); // Movido para cima da cabeça do PNG
+hpBarBg.position.set(0, 4.2, 0.5); // Movido para o alto da cabeça
 playerGroup.add(hpBarBg);
 
 const hpMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(HP_BAR_WIDTH, 0.28), hpMat);
-hpBar.position.set(0, 3.2, 0.51);
+hpBar.position.set(0, 4.2, 0.51);
 playerGroup.add(hpBar);
 
 playerGroup.position.set(0, 0, 0);
@@ -332,6 +332,10 @@ function updateHPBar() {
     hpBar.position.x = -(HP_BAR_WIDTH * (1 - ratio)) / 2;
     hpMat.color.set(playerHP > 50 ? 0xff00ff : playerHP > 25 ? 0xffff00 :
         (Math.floor(Date.now() / 200) % 2 === 0 ? 0xff2200 : 0xff0000));
+
+    const showHP = playerHP < PLAYER_MAX_HP;
+    hpBar.visible = showHP;
+    hpBarBg.visible = showHP;
 }
 
 // --- SAPOS (com IA de Patrulha / Perseguição) ---
@@ -540,7 +544,7 @@ function updateBullets() {
         const b = bullets[i];
         b.mesh.position.addScaledVector(b.dir, BULLET_SPEED);
 
-        if (b.mesh.position.distanceTo(playerGroup.position) > 60) {
+        if (b.mesh.position.distanceTo(playerGroup.position) > 28) {
             scene.remove(b.mesh); bullets.splice(i, 1); continue;
         }
 
@@ -578,7 +582,7 @@ function updateWebs() {
             continue;
         }
 
-        if (w.mesh.position.distanceTo(playerGroup.position) > 50) {
+        if (w.mesh.position.distanceTo(playerGroup.position) > 28) {
             scene.remove(w.mesh); webs.splice(i, 1);
         }
     }
@@ -734,9 +738,12 @@ function updateMovement() {
         aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
 
-        playerVisual.scale.x = dx < 0 ? -1 : 1;
-        // Centralização do PNG único
-        playerVisual.position.x = dx < 0 ? 0.3 : -0.3;
+        // O PNG do sidewalk olha para a ESQUERDA naturalmente.
+        // Se ela atira para a direita (dx > 0), precisamos ESPELHAR (scale = -1).
+        // Se ela atira para a esquerda (dx < 0), mantemos normal (scale = 1).
+        playerVisual.scale.x = dx < 0 ? 1 : -1;
+        // Centralização do PNG único (inverte o offset dependendo de para onde ela está olhando fisicamente)
+        playerVisual.position.x = playerVisual.scale.x === 1 ? -0.3 : 0.3;
     }
 }
 

@@ -75,13 +75,13 @@ html {
     background-position: 100% 0%;
 }
 
-#game-menu:hover .eye-left {
+.eyes-bg:hover .eye-left {
     background-position: 0% 100%;
     transform: scale(1.08);
     filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
 }
 
-#game-menu:hover .eye-right {
+.eyes-bg:hover .eye-right {
     background-position: 100% 100%;
     transform: scale(1.08);
     filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
@@ -382,6 +382,8 @@ h1.glitch .ampersand {
 }
 
 .crosshair {
+    display: none;
+    /* Escondendo a mira fixa a pedido do usuário */
     position: fixed;
     top: 50%;
     left: 50%;
