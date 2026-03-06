@@ -34,9 +34,7 @@ let inventoryOpen = false;
 // Animation State
 let playerState = 'idle'; // 'idle' or 'walk'
 let playerDirection = 'front'; // 'front', 'back', 'side'
-let playerFrames = 4; // Ajuste para o número real de frames no seu png
-let animTimer = 0;
-let currentFrame = 0;
+let playerFrames = 1; // As imagens são frames únicos verticais (aprox 170x430)
 const ANIM_SPEED = 0.15;
 
 const treeColliders = [];
@@ -263,10 +261,9 @@ textureLoader.load(
 // --- PLAYER ---
 const playerGroup = new THREE.Group();
 
-// Visual da Personagem
 const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.1 });
-const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), playerMat);
-playerVisual.position.set(0, 1.2, 0.1);
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(1.8, 4.4), playerMat);
+playerVisual.position.set(0, 1.8, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
@@ -738,8 +735,8 @@ function updateMovement() {
         aimDir.set(dx / len, dy / len, 0);
 
         playerVisual.scale.x = dx < 0 ? -1 : 1;
-        // Ajuste de centralização (ajuste fino conforme o PNG original)
-        playerVisual.position.x = dx < 0 ? 0.4 : -0.4;
+        // Centralização do PNG único
+        playerVisual.position.x = dx < 0 ? 0.3 : -0.3;
     }
 }
 
@@ -754,16 +751,9 @@ function animate() {
         updateHPBar();
         updateParticles();
 
-        // Animação da Personagem
-        if (playerState === 'walk') {
-            animTimer += ANIM_SPEED;
-            currentFrame = Math.floor(animTimer) % playerFrames;
-        } else {
-            currentFrame = 0; // Frame de parada
-        }
-
+        // Desativa a animação de frames já que temos apenas 1 frame estático
         if (playerMat.map) {
-            playerMat.map.offset.x = currentFrame / playerFrames;
+            playerMat.map.offset.x = 0;
         }
 
         if (damageCooldown > 0) damageCooldown--;
