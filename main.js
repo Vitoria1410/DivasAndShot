@@ -53,8 +53,15 @@ let canSlash = true;
 let swordMesh;
 
 const keys = {};
-window.addEventListener('keydown', (e) => { keys[e.code] = true; });
+let lastDirectionKey = 'S'; // Para rastrear a última pose horizontal
+window.addEventListener('keydown', (e) => {
+    keys[e.code] = true;
+    if (e.code === 'KeyD' || e.code === 'KeyA') lastDirectionKey = e.code;
+});
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+
+let isAttacking = false;
+let attackTimer = null;
 
 // --- SCENE ---
 const scene = new THREE.Scene();
@@ -261,6 +268,23 @@ textureLoader.load(
     () => { initTrees(); }
 );
 
+// --- PEDRAS ---
+textureLoader.load('rock.JPG', (tex) => {
+    for (let i = 0; i < 40; i++) {
+        const rx = (Math.random() - 0.5) * 240;
+        const ry = (Math.random() - 0.5) * 240;
+        if (Math.abs(rx) > 15 || Math.abs(ry) > 15) { // Longe do spawn
+            const rs = 1.0 + Math.random() * 1.5;
+            const rock = new THREE.Mesh(
+                new THREE.PlaneGeometry(rs * 2, rs * 2),
+                new THREE.MeshBasicMaterial({ map: tex, transparent: true })
+            );
+            rock.position.set(rx, ry, -ry * 0.01 + 0.001);
+            scene.add(rock);
+        }
+    }
+});
+
 // --- PLAYER ---
 const playerGroup = new THREE.Group();
 
@@ -274,7 +298,9 @@ const playerTextures = {
     'back': textureLoader.load('backwalk.png.png'),
     'side': textureLoader.load('sidewalk.png.png'),
     'aim': textureLoader.load('gunaim.png'),
-    'attack': textureLoader.load('attack.png')
+    'attack': textureLoader.load('attack.png'),
+    'idle': textureLoader.load('idle.png'),
+    'idleback': textureLoader.load('idleback.png')
 };
 
 // Geometrias dinâmicas para ajustar corretamente a distorção de cada PNG
@@ -283,7 +309,9 @@ const geometries = {
     'back': new THREE.PlaneGeometry(2.2, 5.3),
     'side': new THREE.PlaneGeometry(2.1, 5.3),
     'aim': new THREE.PlaneGeometry(3.2, 5.3),
-    'attack': new THREE.PlaneGeometry(6.2, 5.3)
+    'attack': new THREE.PlaneGeometry(6.2, 5.3),
+    'idle': new THREE.PlaneGeometry(2.2, 5.3),
+    'idleback': new THREE.PlaneGeometry(2.2, 5.3)
 };
 
 Object.values(playerTextures).forEach(tex => {
@@ -519,8 +547,18 @@ function slash() {
     }, 50);
 }
 
+function triggerAttackAnimation() {
+    isAttacking = true;
+    if (attackTimer) clearTimeout(attackTimer);
+    attackTimer = setTimeout(() => {
+        isAttacking = false;
+    }, 300); // Mostra a imagem de ataque por 300ms
+}
+
 // --- TIRO ---
 function shoot() {
+    triggerAttackAnimation();
+
     const currentWeapon = HOTBAR[currentWeaponIndex];
     if (currentWeapon === 'SWORD') {
         slash();
@@ -711,11 +749,18 @@ function updateMovement() {
         playerState = 'idle';
     }
 
-    let currentSpriteName = playerState === 'idle' ? 'front' : playerDirection;
+    let currentSpriteName = 'front';
     const weapon = HOTBAR[currentWeaponIndex];
-    if (weapon === 'SWORD') {
+
+    if (playerState === 'idle') {
+        currentSpriteName = lastDirectionKey === 'KeyD' ? 'idleback' : 'idle';
+    } else {
+        currentSpriteName = playerDirection;
+    }
+
+    if (isAttacking && weapon === 'SWORD') {
         currentSpriteName = 'attack';
-    } else if (weapon === 'GUN') {
+    } else if (isAttacking && weapon === 'GUN') {
         currentSpriteName = 'aim';
     }
 
@@ -767,7 +812,7 @@ function updateMovement() {
         aimDir.set(dx / len, dy / len, 0);
 
         const weapon = HOTBAR[currentWeaponIndex];
-        if (weapon) {
+        if (weapon && isAttacking) {
             // As imagens originais "target" parecem mirar para frente/direita. 
             // Precisamos espelhar caso o mouse aponte para a esquerda.
             playerVisual.scale.x = dx < 0 ? -1 : 1;

@@ -79,12 +79,12 @@ html {
 /* Animação do Hover (Aberto -> Meio -> Fechado -> Meio -> Aberto) */
 .eyes-bg:hover .eye-left {
     filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
-    animation: eyePulse 3s infinite alternate, eyeBlinkLeft 1.2s infinite;
+    animation: eyePulse 3s infinite alternate, eyeBlinkLeft 3s infinite;
 }
 
 .eyes-bg:hover .eye-right {
     filter: drop-shadow(0 0 25px var(--neon-blue)) hue-rotate(45deg);
-    animation: eyePulse 3s infinite alternate, eyeBlinkRight 1.2s infinite;
+    animation: eyePulse 3s infinite alternate, eyeBlinkRight 3s infinite;
 }
 
 @keyframes eyeBlinkLeft {
