@@ -47,8 +47,8 @@ const worldMouse = new THREE.Vector3();
 let aimDir = new THREE.Vector3(0, 1, 0);
 
 // Weapon state
-const WEAPONS = ['GUN', 'SWORD'];
-let currentWeaponIndex = 0;
+const HOTBAR = ['SWORD', 'GUN', null, null, null, null];
+let currentWeaponIndex = 0; // 0 to 5
 let canSlash = true;
 let swordMesh;
 
@@ -472,15 +472,30 @@ function shootWeb(fromPosition) {
 }
 
 // --- ARMAS & MECÂNICAS ---
-function switchWeapon(direction) {
-    if (direction > 0) currentWeaponIndex = (currentWeaponIndex + 1) % WEAPONS.length;
-    else currentWeaponIndex = (currentWeaponIndex - 1 + WEAPONS.length) % WEAPONS.length;
+function equipSlot(index) {
+    currentWeaponIndex = Math.max(0, Math.min(index, 5));
 
-    const currentWeapon = WEAPONS[currentWeaponIndex];
-    document.getElementById('weapon-name').innerText = currentWeapon;
+    // Atualiza Interface (Hotbar)
+    for (let i = 0; i < 6; i++) {
+        const slotEl = document.getElementById(`slot-${i + 1}`);
+        if (slotEl) {
+            if (i === currentWeaponIndex) slotEl.classList.add('active');
+            else slotEl.classList.remove('active');
+        }
+    }
 
-    gunMesh.visible = (currentWeapon === 'GUN');
-    swordMesh.visible = (currentWeapon === 'SWORD');
+    const currentWeapon = HOTBAR[currentWeaponIndex];
+    if (currentWeapon === 'GUN') {
+        gunMesh.visible = true;
+        swordMesh.visible = false;
+    } else if (currentWeapon === 'SWORD') {
+        gunMesh.visible = false;
+        swordMesh.visible = true;
+    } else {
+        // Mãos livres / Vazio
+        gunMesh.visible = false;
+        swordMesh.visible = false;
+    }
 }
 
 function updateEnemyHP(enemy, damage) {
@@ -525,21 +540,23 @@ function slash() {
 
 // --- TIRO ---
 function shoot() {
-    if (WEAPONS[currentWeaponIndex] === 'SWORD') {
+    const currentWeapon = HOTBAR[currentWeaponIndex];
+    if (currentWeapon === 'SWORD') {
         slash();
         return;
-    }
-    const bullet = new THREE.Mesh(
-        new THREE.CircleGeometry(0.18, 8),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff })
-    );
-    bullet.position.set(playerGroup.position.x, playerGroup.position.y, 1.0); // Z alto pra passar sobre coisas
-    bullets.push({ mesh: bullet, dir: aimDir.clone() });
-    scene.add(bullet);
+    } else if (currentWeapon === 'GUN') {
+        const bullet = new THREE.Mesh(
+            new THREE.CircleGeometry(0.18, 8),
+            new THREE.MeshBasicMaterial({ color: 0x00ffff })
+        );
+        bullet.position.set(playerGroup.position.x, playerGroup.position.y, 1.0); // Z alto pra passar sobre coisas
+        bullets.push({ mesh: bullet, dir: aimDir.clone() });
+        scene.add(bullet);
 
-    // Cooldown/Recuo visual da arma
-    gunMesh.position.y -= 0.3;
-    setTimeout(() => { gunMesh.position.y += 0.3; }, 60);
+        // Cooldown/Recuo visual da arma
+        gunMesh.position.y -= 0.3;
+        setTimeout(() => { gunMesh.position.y += 0.3; }, 60);
+    }
 }
 
 function updateBullets() {
@@ -630,6 +647,7 @@ document.getElementById('start-button').addEventListener('click', () => {
         menu.style.display = 'none';
         document.getElementById('hud').style.display = 'flex';
         gameStarted = true;
+        equipSlot(0); // Força a equipagem do primeiro slot ao iniciar
     }, 500);
 });
 
@@ -648,7 +666,11 @@ window.addEventListener('mousedown', (e) => {
 
 window.addEventListener('wheel', (e) => {
     if (!gameStarted || inventoryOpen) return;
-    switchWeapon(e.deltaY);
+    if (e.deltaY > 0) {
+        equipSlot((currentWeaponIndex + 1) % 6);
+    } else {
+        equipSlot((currentWeaponIndex - 1 + 6) % 6);
+    }
 });
 
 window.addEventListener('keydown', (e) => {
@@ -661,6 +683,12 @@ window.addEventListener('keydown', (e) => {
     if ((e.code === 'KeyI' || e.code === 'Tab') && gameStarted) {
         e.preventDefault();
         toggleInventory();
+    }
+
+    // Suporte aos numerais 1 a 6 do teclado para Seleção de Itens da Hotbar
+    if (e.code >= 'Digit1' && e.code <= 'Digit6' && gameStarted) {
+        const slot = parseInt(e.code.replace('Digit', '')) - 1;
+        equipSlot(slot);
     }
 });
 

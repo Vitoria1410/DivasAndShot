@@ -365,20 +365,62 @@ h1.glitch .ampersand {
     font-family: 'Press Start 2P', cursive;
 }
 
-.weapon-container {
-    padding: 0 22px;
-    color: var(--neon-blue);
-    font-size: 1.1rem;
-    font-weight: 900;
-    text-shadow: 2px 2px 0px var(--black);
-    font-family: 'Press Start 2P', cursive;
-    margin-top: -10px;
-    letter-spacing: 2px;
+/* Hotbar na parte inferior */
+.hotbar-container {
+    position: absolute;
+    bottom: 25px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 12px;
+    padding: 10px;
+    background: rgba(10, 0, 26, 0.6);
+    border: 2px solid rgba(0, 255, 255, 0.4);
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(255, 0, 255, 0.1);
+    backdrop-filter: blur(4px);
+    pointer-events: auto;
+    /* Para permitir cliques se necessário futuramente */
 }
 
-#weapon-name {
+.hotbar-slot {
+    position: relative;
+    width: 60px;
+    height: 60px;
+    background: rgba(8, 0, 22, 0.8);
+    border: 2px solid rgba(255, 0, 255, 0.3);
+    border-radius: 8px;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+}
+
+.hotbar-slot.active {
+    border-color: var(--neon-blue);
+    background: rgba(0, 255, 255, 0.15);
+    box-shadow: 0 0 15px var(--neon-blue), inset 0 0 10px var(--neon-blue);
+    transform: scale(1.1);
+    z-index: 2;
+}
+
+.slot-num {
+    position: absolute;
+    top: 4px;
+    left: 6px;
     color: var(--hot-pink);
-    text-shadow: 0 0 10px var(--hot-pink);
+    font-size: 0.6rem;
+    font-family: 'Press Start 2P', cursive;
+    text-shadow: 0 0 5px var(--hot-pink);
+}
+
+.slot-item {
+    font-size: 0.65rem;
+    color: #fff;
+    font-weight: bold;
+    font-family: 'Orbitron', sans-serif;
+    text-shadow: 0 0 5px var(--neon-blue);
+    letter-spacing: 1px;
 }
 
 .crosshair {
