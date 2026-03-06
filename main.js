@@ -53,10 +53,10 @@ let canSlash = true;
 let swordMesh;
 
 const keys = {};
-let lastDirectionKey = 'S'; // Para rastrear a última pose horizontal
+let lastDirectionKey = 'KeyS'; // Para rastrear a última pose horizontal
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (e.code === 'KeyD' || e.code === 'KeyA') lastDirectionKey = e.code;
+    if (e.code === 'KeyW' || e.code === 'KeyS') lastDirectionKey = e.code;
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
@@ -762,7 +762,7 @@ function updateMovement() {
     const weapon = HOTBAR[currentWeaponIndex];
 
     if (playerState === 'idle') {
-        currentSpriteName = lastDirectionKey === 'KeyD' ? 'idleback' : 'idle';
+        currentSpriteName = lastDirectionKey === 'KeyW' ? 'idleback' : 'idle';
     } else {
         currentSpriteName = playerDirection;
     }
@@ -822,13 +822,14 @@ function updateMovement() {
 
         const weapon = HOTBAR[currentWeaponIndex];
         if (weapon && isAttacking) {
-            // As imagens originais "target" parecem mirar para frente/direita. 
-            // Precisamos espelhar caso o mouse aponte para a esquerda.
-            playerVisual.scale.x = dx < 0 ? -1 : 1;
             if (weapon === 'GUN') {
+                // gunaim.png mira para a direita nativamente
+                playerVisual.scale.x = dx < 0 ? -1 : 1;
                 playerVisual.position.x = dx < 0 ? -0.4 : 0.4;
             } else {
-                playerVisual.position.x = dx < 0 ? -0.6 : 0.6;
+                // attack.png mira para a esquerda nativamente
+                playerVisual.scale.x = dx < 0 ? 1 : -1;
+                playerVisual.position.x = playerVisual.scale.x === 1 ? -0.6 : 0.6;
             }
         }
     }

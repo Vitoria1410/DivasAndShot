@@ -91,27 +91,27 @@ html {
 
     0%,
     15% {
-        background-position: 0% 0%;
+        background-position: 0px 0px;
     }
 
     16%,
     35% {
-        background-position: 0% 50%;
+        background-position: 0px -138px;
     }
 
     36%,
     65% {
-        background-position: 0% 100%;
+        background-position: 0px -260px;
     }
 
     66%,
     85% {
-        background-position: 0% 50%;
+        background-position: 0px -138px;
     }
 
     86%,
     100% {
-        background-position: 0% 0%;
+        background-position: 0px 0px;
     }
 }
 
@@ -119,27 +119,27 @@ html {
 
     0%,
     15% {
-        background-position: 100% 0%;
+        background-position: -220px 0px;
     }
 
     16%,
     35% {
-        background-position: 100% 50%;
+        background-position: -220px -138px;
     }
 
     36%,
     65% {
-        background-position: 100% 100%;
+        background-position: -220px -260px;
     }
 
     66%,
     85% {
-        background-position: 100% 50%;
+        background-position: -220px -138px;
     }
 
     86%,
     100% {
-        background-position: 100% 0%;
+        background-position: -220px 0px;
     }
 }
 
