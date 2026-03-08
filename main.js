@@ -36,18 +36,21 @@ let score = 0;
 let divaCoins = 0;
 let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
-let isGameOver = false;
-let inventoryOpen = false;
-let shopOpen = false;
 let stylePoints = 0;
 let styleRank = 'D';
 const STYLE_MAX = 5000;
-const STYLE_DECAY = 1.5; // Pontos perdidos por frame
+const STYLE_DECAY = 0.5; // Reduzido para ficar mais fixo
 const RANK_THRESHOLDS = { 'S': 4000, 'A': 2500, 'B': 1000, 'C': 300, 'D': 0 };
 
 // Neon Chips State
-let hasRicochet = false;
+let hasTripleShot = false;
 let hasPierce = false;
+
+// Round State
+let currentRound = 1;
+let enemiesKilledInRound = 0;
+let roundTarget = 10;
+let isTransitioningRound = false;
 
 // Animation State
 let playerState = 'idle'; // 'idle' or 'walk'
@@ -704,6 +707,14 @@ function onEnemyKilled(enemy) {
 
     score += reward;
     divaCoins += coins;
+    enemiesKilledInRound++;
+
+    if (!isTransitioningRound && enemiesKilledInRound >= roundTarget) {
+        nextRound();
+    } else if (!isTransitioningRound) {
+        updateRoundFeed(`ROUND ${currentRound}: ${enemiesKilledInRound}/${roundTarget} MORTOS`);
+    }
+
     addStyle(styleBonus);
     updateHUD();
 
@@ -770,13 +781,26 @@ function shoot() {
         const bulletColor = overclockTimer > 0 ? 0xff00ff : 0x00ffff;
         const bulletScale = overclockTimer > 0 ? 1.5 : 1.0;
 
-        const bullet = new THREE.Mesh(
-            new THREE.CircleGeometry(0.18 * bulletScale, 8),
-            new THREE.MeshBasicMaterial({ color: bulletColor })
-        );
-        bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0);
-        bullets.push({ mesh: bullet, dir: aimDir.clone() });
-        scene.add(bullet);
+        const count = hasTripleShot ? 3 : 1;
+        for (let i = 0; i < count; i++) {
+            const bullet = new THREE.Mesh(
+                new THREE.CircleGeometry(0.18 * bulletScale, 8),
+                new THREE.MeshBasicMaterial({ color: bulletColor })
+            );
+            bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0);
+
+            let bulletDir = aimDir.clone();
+            if (hasTripleShot) {
+                // Espalha as balas: -0.2, 0, 0.2 radianos de offset
+                const angle = Math.atan2(aimDir.y, aimDir.x);
+                const offset = (i - 1) * 0.25;
+                bulletDir.x = Math.cos(angle + offset);
+                bulletDir.y = Math.sin(angle + offset);
+            }
+
+            bullets.push({ mesh: bullet, dir: bulletDir });
+            scene.add(bullet);
+        }
 
         // Neon Sparks
         createSparks(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0));
@@ -803,17 +827,7 @@ function updateBullets() {
 
         b.mesh.position.addScaledVector(b.dir, BULLET_SPEED);
 
-        // Ricochet Logic
-        if (hasRicochet) {
-            if (Math.abs(b.mesh.position.x) > MAP_LIMIT) {
-                b.dir.x *= -1;
-                b.mesh.position.x = Math.sign(b.mesh.position.x) * MAP_LIMIT;
-            }
-            if (Math.abs(b.mesh.position.y) > MAP_LIMIT) {
-                b.dir.y *= -1;
-                b.mesh.position.y = Math.sign(b.mesh.position.y) * MAP_LIMIT;
-            }
-        }
+        // Ricochet Logic Removida
 
         if (b.mesh.position.distanceTo(playerGroup.position) > 28) {
             scene.remove(b.mesh); bullets.splice(i, 1); continue;
@@ -1096,14 +1110,14 @@ document.getElementById('buy-speed').querySelector('.buy-btn').addEventListener(
     }
 });
 
-document.getElementById('chip-ricochet').querySelector('.buy-btn').addEventListener('click', () => {
-    if (divaCoins >= 1500 && !hasRicochet) {
-        divaCoins -= 1500;
-        hasRicochet = true;
+document.getElementById('chip-tripleshot').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 1800 && !hasTripleShot) {
+        divaCoins -= 1800;
+        hasTripleShot = true;
         updateHUD();
         sounds.playBuy();
-        document.getElementById('chip-ricochet').style.opacity = '0.5';
-        document.getElementById('chip-ricochet').querySelector('.buy-btn').innerText = 'OWNED';
+        document.getElementById('chip-tripleshot').style.opacity = '0.5';
+        document.getElementById('chip-tripleshot').querySelector('.buy-btn').innerText = 'OWNED';
     }
 });
 
@@ -1433,17 +1447,56 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+// Difficulty scaling was here but moving to rounds logic
 
-// Difficulty Scaling
-setInterval(() => {
-    if (gameStarted) {
-        ENEMY_SPEED += 0.001;
-        PATROL_SPEED += 0.0005;
+function updateRoundFeed(msg) {
+    document.getElementById('round-feed').innerText = ">> " + msg;
+}
+
+function announceRound(round) {
+    const el = document.getElementById('round-announcer');
+    el.innerText = "ROUND " + round;
+    el.style.display = 'block';
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = 'announceScale 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards';
+}
+
+function nextRound() {
+    isTransitioningRound = true;
+    currentRound++;
+    enemiesKilledInRound = 0;
+    roundTarget = 10 + (currentRound * 5);
+
+    let msg = "";
+    if (currentRound === 2) msg = "ARANHAS DETECTADAS!";
+    else if (currentRound === 3) msg = "NÍVEL POP DIVA ATIVADO!";
+    else msg = "DIFICULDADE AUMENTADA!";
+
+    updateRoundFeed(`ROUND ${currentRound} INICIANDO EM 5 SEC... ${msg}`);
+
+    setTimeout(() => {
+        announceRound(currentRound);
+        isTransitioningRound = false;
+        spawnInitialRoundEnemies();
+    }, 5000);
+}
+
+function spawnInitialRoundEnemies() {
+    // Limpar o que sobrou (opcional, ou apenas adicionar)
+    if (currentRound === 1) {
+        for (let i = 0; i < 5; i++) createFrog();
+    } else if (currentRound === 2) {
+        for (let i = 0; i < 5; i++) createFrog();
+        for (let i = 0; i < 3; i++) createSpider();
+    } else {
+        for (let i = 0; i < 5; i++) createFrog();
+        for (let i = 0; i < 3; i++) createSpider();
+        createPopDiva();
     }
-}, 10000);
+}
 
 // Init
-for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
-for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
-for (let i = 0; i < POP_DIVA_COUNT; i++) createPopDiva();
+spawnInitialRoundEnemies();
+updateRoundFeed("ROUND 1: ELIMINE 10 SAPOS");
 animate();
