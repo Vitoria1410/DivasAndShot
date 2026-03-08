@@ -1495,9 +1495,14 @@ function nextRound() {
     enemiesKilledInRound = 0;
     roundTarget = 10 + (currentRound * 5);
 
+    // Aumenta a velocidade base dos inimigos progressivamente
+    ENEMY_SPEED += 0.008;
+    PATROL_SPEED += 0.004;
+
     let msg = "";
     if (currentRound === 2) msg = "ARANHAS DETECTADAS!";
     else if (currentRound === 3) msg = "NÍVEL POP DIVA ATIVADO!";
+    else if (currentRound % 5 === 0) msg = "HAVAÍ NEON TOTAL! CAOS ATIVADO!";
     else msg = "DIFICULDADE AUMENTADA!";
 
     updateRoundFeed(`ROUND ${currentRound} INICIANDO EM 5 SEC... ${msg}`);
@@ -1510,16 +1515,20 @@ function nextRound() {
 }
 
 function spawnInitialRoundEnemies() {
-    // Limpar o que sobrou (opcional, ou apenas adicionar)
     if (currentRound === 1) {
         for (let i = 0; i < 18; i++) createFrog(); // Mais sapos no início
     } else if (currentRound === 2) {
         for (let i = 0; i < 10; i++) createFrog();
         for (let i = 0; i < 6; i++) createSpider();
     } else {
-        for (let i = 0; i < 8; i++) createFrog();
-        for (let i = 0; i < 6; i++) createSpider();
-        for (let i = 0; i < 3; i++) createPopDiva();
+        // Escalonamento progressivo a partir do Round 3
+        const frogCount = Math.min(15, 6 + currentRound);
+        const spiderCount = Math.min(12, 4 + currentRound);
+        const popCount = Math.min(8, Math.floor(currentRound / 2));
+
+        for (let i = 0; i < frogCount; i++) createFrog();
+        for (let i = 0; i < spiderCount; i++) createSpider();
+        for (let i = 0; i < popCount; i++) createPopDiva();
     }
 }
 
