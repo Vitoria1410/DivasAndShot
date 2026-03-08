@@ -36,6 +36,9 @@ let score = 0;
 let divaCoins = 0;
 let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
+let isGameOver = false;
+let inventoryOpen = false;
+let shopOpen = false;
 let stylePoints = 0;
 let styleRank = 'D';
 const STYLE_MAX = 5000;
@@ -1073,10 +1076,12 @@ const shop = document.getElementById('shop');
 document.getElementById('shop-open-button').addEventListener('click', () => {
     shop.style.display = 'flex';
     document.getElementById('shop-coins-value').innerText = divaCoins;
+    shopOpen = true; // Update state
 });
 
 document.getElementById('shop-close-button').addEventListener('click', () => {
     shop.style.display = 'none';
+    shopOpen = false; // Update state
 });
 
 document.getElementById('buy-hp').querySelector('.buy-btn').addEventListener('click', () => {
@@ -1161,8 +1166,10 @@ window.addEventListener('keydown', (e) => {
         document.getElementById('game-menu').style.opacity = '1';
         document.getElementById('hud').style.display = 'none';
         gameStarted = false;
+        shopOpen = false;
+        inventoryOpen = false;
     }
-    if ((e.code === 'KeyI' || e.code === 'Tab') && gameStarted) {
+    if ((e.code === 'KeyI' || e.code === 'Tab') && gameStarted && !shopOpen) {
         e.preventDefault();
         toggleInventory();
     }
