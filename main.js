@@ -44,6 +44,7 @@ let styleRank = 'D';
 const STYLE_MAX = 5000;
 const STYLE_DECAY = 0.5; // Reduzido para ficar mais fixo
 const RANK_THRESHOLDS = { 'S': 4000, 'A': 2500, 'B': 1000, 'C': 300, 'D': 0 };
+const RANK_MULTIPLIERS = { 'S': 2.5, 'A': 1.8, 'B': 1.4, 'C': 1.2, 'D': 1.0 };
 
 // Neon Chips State
 let hasTripleShot = false;
@@ -199,6 +200,15 @@ renderer.domElement.style.cursor = 'crosshair';
 
 // TextureLoader compartilhado
 const textureLoader = new THREE.TextureLoader();
+
+// Frog Textures
+const frogIdleTex = textureLoader.load('frogidle.png');
+const frogAttackTex = textureLoader.load('frog.png');
+[frogIdleTex, frogAttackTex].forEach(t => t.magFilter = t.minFilter = THREE.NearestFilter);
+
+// Pop Diva GIF Texture
+const popDivaTex = textureLoader.load('_(=^‥^)ノ☆.gif');
+popDivaTex.magFilter = popDivaTex.minFilter = THREE.NearestFilter;
 
 // --- GROUND TEXTURE (PNG ou Procedural como fallback) ---
 function createForestTexture() {
@@ -498,32 +508,17 @@ function updateHUD() {
 function createFrog() {
     const frog = new THREE.Group();
 
-    frog.add(new THREE.Mesh(
-        new THREE.CircleGeometry(1, 16),
-        new THREE.MeshBasicMaterial({ color: 0x44dd44 })
-    ));
+    const frogMat = new THREE.MeshBasicMaterial({ map: frogIdleTex, transparent: true, alphaTest: 0.1 });
+    const frogVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 2.5), frogMat);
+    frogVisual.position.y = 1.0;
+    frog.add(frogVisual);
 
-    [[(-0.45), 0.7], [0.45, 0.7]].forEach(([ex, ey]) => {
-        const eye = new THREE.Mesh(
-            new THREE.CircleGeometry(0.28, 12),
-            new THREE.MeshBasicMaterial({ color: 0xffffff })
-        );
-        eye.position.set(ex, ey, 0.1);
-        const pupil = new THREE.Mesh(
-            new THREE.CircleGeometry(0.13, 8),
-            new THREE.MeshBasicMaterial({ color: 0x000000 })
-        );
-        pupil.position.z = 0.1;
-        eye.add(pupil);
-        frog.add(eye);
-    });
-
-    // Barra de Vida do Sapo
+    // Barra de Vida do Sapo (reposicionada acima do sprite)
     const enemyHpBg = new THREE.Mesh(
         new THREE.PlaneGeometry(1.6, 0.15),
         new THREE.MeshBasicMaterial({ color: 0x111111 })
     );
-    enemyHpBg.position.set(0, 1.4, 0.2);
+    enemyHpBg.position.set(0, 2.4, 0.2);
     frog.add(enemyHpBg);
 
     const enemyHpBar = new THREE.Mesh(
@@ -541,6 +536,8 @@ function createFrog() {
     scene.add(frog);
     enemies.push({
         mesh: frog,
+        visual: frogVisual,
+        mat: frogMat,
         hpBar: enemyHpBar,
         hp: ENEMY_MAX_HP,
         type: 'frog',
@@ -700,12 +697,14 @@ function onEnemyKilled(enemy) {
     let coins = 10;
     let styleBonus = 150;
 
+    const multiplier = RANK_MULTIPLIERS[styleRank] || 1.0;
+
     if (type === 'frog') {
-        reward = 100; coins = 15; styleBonus = 150; createFrog();
+        reward = 100; coins = Math.floor(15 * multiplier); styleBonus = 150; createFrog();
     } else if (type === 'spider') {
-        reward = 150; coins = 25; styleBonus = 250; createSpider();
+        reward = 150; coins = Math.floor(25 * multiplier); styleBonus = 250; createSpider();
     } else if (type === 'pop') {
-        reward = 300; coins = 50; styleBonus = 800; createPopDiva();
+        reward = 300; coins = Math.floor(50 * multiplier); styleBonus = 800; createPopDiva();
     }
 
     score += reward;
@@ -1374,6 +1373,10 @@ function animate() {
                     mesh.position.x += Math.cos(angle) * ENEMY_SPEED;
                     mesh.position.y += Math.sin(angle) * ENEMY_SPEED;
                     mesh.rotation.z = angle - Math.PI / 2;
+
+                    // Altera para PNG de ataque ao estar em Chase
+                    if (enemy.mat.map !== frogAttackTex) enemy.mat.map = frogAttackTex;
+
                     if (dist < 1.5 && damageCooldown === 0 && !isDashing) {
                         playerHP -= DAMAGE_PER_HIT;
                         damageCooldown = DAMAGE_COOLDOWN_FRAMES;
@@ -1392,6 +1395,9 @@ function animate() {
                     mesh.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED;
                     mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED;
                     mesh.rotation.z = Math.sin(Date.now() * 0.002 + enemy.patrolDir) * 0.3;
+
+                    // Altera para PNG Idle ao patrulhar
+                    if (enemy.mat.map !== frogIdleTex) enemy.mat.map = frogIdleTex;
                 }
             } else if (enemy.type === 'spider') {
                 if (dist < SPIDER_DETECTION_RADIUS) {
@@ -1492,14 +1498,14 @@ function nextRound() {
 function spawnInitialRoundEnemies() {
     // Limpar o que sobrou (opcional, ou apenas adicionar)
     if (currentRound === 1) {
-        for (let i = 0; i < 5; i++) createFrog();
+        for (let i = 0; i < 18; i++) createFrog(); // Mais sapos no início
     } else if (currentRound === 2) {
-        for (let i = 0; i < 5; i++) createFrog();
-        for (let i = 0; i < 3; i++) createSpider();
+        for (let i = 0; i < 10; i++) createFrog();
+        for (let i = 0; i < 6; i++) createSpider();
     } else {
-        for (let i = 0; i < 5; i++) createFrog();
-        for (let i = 0; i < 3; i++) createSpider();
-        createPopDiva();
+        for (let i = 0; i < 8; i++) createFrog();
+        for (let i = 0; i < 6; i++) createSpider();
+        for (let i = 0; i < 3; i++) createPopDiva();
     }
 }
 
