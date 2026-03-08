@@ -413,12 +413,21 @@ h1.glitch .ampersand {
 }
 
 .score-container {
+    display: flex;
+    flex-direction: column;
     padding: 20px;
     color: var(--hot-pink);
-    font-size: 2.5rem;
+    font-size: 2rem;
     font-weight: 900;
     text-shadow: 3px 3px 0px var(--black);
     font-family: 'Press Start 2P', cursive;
+    gap: 10px;
+}
+
+.coins-hud {
+    font-size: 1.2rem;
+    color: var(--acid-green);
+    text-shadow: 2px 2px 0px var(--black);
 }
 
 /* Hotbar na parte inferior */
@@ -529,3 +538,118 @@ canvas {
 #canvas-container {
     filter: contrast(1.2) saturate(1.5) brightness(1.1);
 }
+
+/* Shop Styles */
+#shop {
+    display: none;
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 180;
+    background: rgba(10, 0, 26, 0.95);
+    justify-content: center;
+    align-items: center;
+    backdrop-filter: blur(10px);
+}
+
+.shop-panel {
+    width: 90%;
+    max-width: 500px;
+    background: rgba(20, 0, 40, 0.8);
+    border: 3px solid var(--hot-pink);
+    border-radius: 20px;
+    padding: 40px;
+    box-shadow: 0 0 50px rgba(255, 0, 255, 0.3);
+    display: flex;
+    flex-direction: column;
+    gap: 30px;
+}
+
+.shop-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding-bottom: 20px;
+    border-bottom: 2px dashed rgba(255, 0, 255, 0.3);
+}
+
+.shop-title {
+    font-size: 1.8rem;
+    color: var(--hot-pink);
+    text-shadow: 0 0 10px var(--hot-pink);
+}
+
+.shop-coins {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.8rem;
+    color: var(--acid-green);
+}
+
+.shop-items {
+    display: flex;
+    flex-direction: column;
+    gap: 20px;
+}
+
+.shop-item {
+    display: flex;
+    align-items: center;
+    gap: 20px;
+    background: rgba(0, 0, 0, 0.4);
+    padding: 15px;
+    border-radius: 12px;
+    border: 1px solid rgba(0, 255, 255, 0.2);
+    transition: transform 0.2s;
+}
+
+.shop-item:hover {
+    transform: translateX(10px);
+    border-color: var(--neon-blue);
+}
+
+.item-icon {
+    font-size: 1.5rem;
+}
+
+.item-info {
+    flex-grow: 1;
+    display: flex;
+    flex-direction: column;
+}
+
+.item-name {
+    font-size: 1rem;
+    font-weight: bold;
+    color: #fff;
+}
+
+.item-price {
+    font-family: 'Press Start 2P', cursive;
+    font-size: 0.6rem;
+    color: var(--acid-green);
+    margin-top: 5px;
+}
+
+.buy-btn {
+    background: var(--hot-pink);
+    border: none;
+    color: white;
+    padding: 10px 20px;
+    font-family: 'Orbitron', sans-serif;
+    font-weight: 900;
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.buy-btn:hover {
+    background: var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue);
+    transform: scale(1.1);
+}
+
+.buy-btn:active {
+    transform: scale(0.95);
+}

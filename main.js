@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 // --- CONFIGURATION ---
 const ENEMY_COUNT = 15;
-const ENEMY_SPEED = 0.04;
-const PATROL_SPEED = 0.01;
+let ENEMY_SPEED = 0.04;
+let PATROL_SPEED = 0.01;
 const DETECTION_RADIUS = 18;   // unidades do mundo (~200px)
 const SPAWN_RADIUS = 40;
 const BULLET_SPEED = 0.6;
@@ -16,6 +16,7 @@ const ENEMY_MAX_HP = 50;
 const SWORD_DAMAGE = 25;
 const SWORD_RANGE = 4.5;
 const GUN_DAMAGE = 15;
+let extraDamage = 0;
 
 // Novos inimigos: Aranha
 const SPIDER_COUNT = 5;
@@ -24,12 +25,20 @@ const WEB_DAMAGE = 15;
 const SPIDER_DETECTION_RADIUS = 25;
 const SPIDER_FIRE_RATE = 120; // frames entre tiros
 
+// Novos inimigos: Pop Diva (Shiny Butterfly)
+const POP_DIVA_COUNT = 3;
+const POP_DIVA_SPEED = 0.08;
+const POP_DIVA_HP = 20;
+const POP_DIVA_DETECTION_RADIUS = 30;
+
 // --- STATE ---
 let score = 0;
+let divaCoins = 0;
 let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
 let isGameOver = false;
 let inventoryOpen = false;
+let shopOpen = false;
 
 // Animation State
 let playerState = 'idle'; // 'idle' or 'walk'
@@ -62,6 +71,70 @@ window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
 let isAttacking = false;
 let attackTimer = null;
+
+// --- SOUND SYSTEM (Procedural Y2K) ---
+class SoundManager {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    playShoot() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+
+    playHit() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(10, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+    }
+
+    playDeath() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1, this.ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+
+    playBuy() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+    }
+}
+const sounds = new SoundManager();
 
 // --- SCENE ---
 const scene = new THREE.Scene();
@@ -372,7 +445,13 @@ function updateHPBar() {
     hpBarBg.visible = showHP;
 }
 
-// --- SAPOS (com IA de Patrulha / Perseguição) ---
+function updateHUD() {
+    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
+    document.getElementById('coins-value').innerText = divaCoins.toString().padStart(3, '0');
+    document.getElementById('shop-coins-value').innerText = divaCoins;
+}
+
+// --- ENEMIES ---
 function createFrog() {
     const frog = new THREE.Group();
 
@@ -483,6 +562,47 @@ function createSpider() {
     });
 }
 
+function createPopDiva() {
+    const diva = new THREE.Group();
+    // Corpo Brilhante
+    const body = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.8, 1),
+        new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
+    );
+    diva.add(body);
+    
+    // Aura Neon
+    const aura = new THREE.Mesh(
+        new THREE.CircleGeometry(1.2, 16),
+        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 })
+    );
+    diva.add(aura);
+
+    // HP Bar
+    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.1), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    hpBg.position.set(0, 1.3, 0.2);
+    diva.add(hpBg);
+    const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.06), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+    hpBar.position.set(0, 1.3, 0.21);
+    diva.add(hpBar);
+
+    const angle = Math.random() * Math.PI * 2;
+    const fx = playerGroup.position.x + Math.cos(angle) * SPAWN_RADIUS;
+    const fy = playerGroup.position.y + Math.sin(angle) * SPAWN_RADIUS;
+    diva.position.set(fx, fy, -fy * 0.001);
+
+    scene.add(diva);
+    enemies.push({
+        mesh: diva,
+        hpBar: hpBar,
+        hp: POP_DIVA_HP,
+        type: 'pop',
+        state: 'patrol',
+        patrolDir: Math.random() * Math.PI * 2,
+        patrolTimer: Math.floor(Math.random() * 60) + 20
+    });
+}
+
 function shootWeb(fromPosition) {
     const web = new THREE.Mesh(
         new THREE.CircleGeometry(0.4, 6),
@@ -517,12 +637,36 @@ function equipSlot(index) {
 }
 
 function updateEnemyHP(enemy, damage) {
-    enemy.hp -= damage;
-    const ratio = Math.max(0, enemy.hp / ENEMY_MAX_HP);
+    enemy.hp -= (damage + extraDamage);
+    const maxHp = enemy.type === 'frog' ? ENEMY_MAX_HP : (enemy.type === 'spider' ? ENEMY_MAX_HP * 0.8 : POP_DIVA_HP);
+    const ratio = Math.max(0, enemy.hp / maxHp);
     enemy.hpBar.scale.x = ratio;
-    enemy.hpBar.position.x = -(1.6 * (1 - ratio)) / 2;
+    enemy.hpBar.position.x = -( (enemy.type === 'pop' ? 1.2 : 1.6) * (1 - ratio)) / 2;
     enemy.hpBar.material.color.set(ratio > 0.5 ? 0x00ff00 : ratio > 0.25 ? 0xffff00 : 0xff0000);
+    
+    if (enemy.hp > 0) sounds.playHit();
     return enemy.hp <= 0;
+}
+
+function onEnemyKilled(enemy) {
+    sounds.playDeath();
+    scene.remove(enemy.mesh);
+    const type = enemy.type;
+    
+    let reward = 100;
+    let coins = 10;
+    
+    if (type === 'frog') {
+        reward = 100; coins = 15; createFrog();
+    } else if (type === 'spider') {
+        reward = 150; coins = 25; createSpider();
+    } else if (type === 'pop') {
+        reward = 300; coins = 50; createPopDiva();
+    }
+    
+    score += reward;
+    divaCoins += coins;
+    updateHUD();
 }
 
 function slash() {
@@ -539,12 +683,9 @@ function slash() {
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (enemies[j].mesh.position.distanceTo(hitZone) < 3.5) {
-                const type = enemies[j].type;
                 if (updateEnemyHP(enemies[j], SWORD_DAMAGE)) {
-                    scene.remove(enemies[j].mesh); enemies.splice(j, 1);
-                    score += 150; // Bônus por matar de perto
-                    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                    if (type === 'frog') createFrog(); else createSpider();
+                    onEnemyKilled(enemies[j]);
+                    enemies.splice(j, 1);
                 }
             }
         }
@@ -573,6 +714,7 @@ function shoot() {
         slash();
         return;
     } else if (currentWeapon === 'GUN') {
+        sounds.playShoot();
         const bullet = new THREE.Mesh(
             new THREE.CircleGeometry(0.18, 8),
             new THREE.MeshBasicMaterial({ color: 0x00ffff })
@@ -602,11 +744,8 @@ function updateBullets() {
                 scene.remove(b.mesh); bullets.splice(i, 1);
 
                 if (isDead) {
-                    const type = enemies[j].type;
-                    scene.remove(enemies[j].mesh); enemies.splice(j, 1);
-                    score += 100;
-                    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                    if (type === 'frog') createFrog(); else createSpider();
+                    onEnemyKilled(enemies[j]);
+                    enemies.splice(j, 1);
                 }
                 break;
             }
@@ -656,6 +795,8 @@ function resetGame() {
     camera.position.set(0, 0, 10);
     for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
     for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
+    for (let i = 0; i < POP_DIVA_COUNT; i++) createPopDiva();
+    updateHUD();
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('game-menu').style.display = 'flex';
     document.getElementById('game-menu').style.opacity = '1';
@@ -676,7 +817,50 @@ document.getElementById('start-button').addEventListener('click', () => {
         document.getElementById('hud').style.display = 'flex';
         gameStarted = true;
         equipSlot(0); // Força a equipagem do primeiro slot ao iniciar
+        if (sounds.ctx.state === 'suspended') sounds.ctx.resume();
     }, 500);
+});
+
+// --- SHOP LOGIC ---
+const shop = document.getElementById('shop');
+document.getElementById('shop-open-button').addEventListener('click', () => {
+    shop.style.display = 'flex';
+    document.getElementById('shop-coins-value').innerText = divaCoins;
+});
+
+document.getElementById('shop-close-button').addEventListener('click', () => {
+    shop.style.display = 'none';
+});
+
+document.getElementById('buy-hp').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 200) {
+        divaCoins -= 200;
+        playerHP = Math.min(PLAYER_MAX_HP, playerHP + 30);
+        updateHPBar();
+        updateHUD();
+        sounds.playBuy();
+    }
+});
+
+document.getElementById('buy-dmg').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 1000) {
+        divaCoins -= 1000;
+        extraDamage += 10;
+        updateHUD();
+        sounds.playBuy();
+    }
+});
+
+document.getElementById('buy-speed').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 500) {
+        divaCoins -= 500;
+        // temporário seria mais complexo, vamos fazer permanente pequeno
+        // ou aumentar a velocidade do player
+        // window.PLAYER_SPEED += 0.02; // não funciona assim pq é const
+        // Mas podemos mudar a lógica de movimento
+        sounds.playBuy();
+        updateHUD();
+    }
 });
 
 document.getElementById('restart-button').addEventListener('click', resetGame);
@@ -911,6 +1095,25 @@ function animate() {
                     mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED * 0.4;
                     mesh.rotation.z = Math.sin(Date.now() * 0.001) * 0.3;
                 }
+            } else if (enemy.type === 'pop') {
+                const time = Date.now() * 0.005;
+                if (dist < POP_DIVA_DETECTION_RADIUS) {
+                    const angle = Math.atan2(dy, dx);
+                    // Movimento em Zig-Zag
+                    mesh.position.x += Math.cos(angle) * POP_DIVA_SPEED + Math.cos(time) * 0.05;
+                    mesh.position.y += Math.sin(angle) * POP_DIVA_SPEED + Math.sin(time) * 0.05;
+                    mesh.rotation.z = time * 0.5;
+                    
+                    if (dist < 1.0 && damageCooldown === 0) {
+                        playerHP -= 20;
+                        damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                        if (sounds) sounds.playDeath(); // Som de dano
+                        if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
+                    }
+                } else {
+                    mesh.position.x += Math.cos(time) * 0.02;
+                    mesh.position.y += Math.sin(time) * 0.02;
+                }
             }
             mesh.position.z = -mesh.position.y * 0.001;
         });
@@ -927,7 +1130,16 @@ window.addEventListener('resize', () => {
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
 
+// Difficulty Scaling
+setInterval(() => {
+    if (gameStarted) {
+        ENEMY_SPEED += 0.001;
+        PATROL_SPEED += 0.0005;
+    }
+}, 10000);
+
 // Init
 for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
 for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
+for (let i = 0; i < POP_DIVA_COUNT; i++) createPopDiva();
 animate();

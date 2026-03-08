@@ -34,7 +34,7 @@
                     <span>START</span>
                     <span class="icon">❯</span>
                 </button>
-                <button id="shop-button" class="menu-btn">
+                <button id="shop-open-button" class="menu-btn">
                     <span>SHOP</span>
                     <span class="icon">🛒</span>
                 </button>
@@ -48,6 +48,46 @@
                 <span class="diamond-small">✧</span> MOUSE: MOVER | CLICK: ATIRAR | ESC: PAUSAR <span
                     class="diamond-small">✧</span>
             </div>
+        </div>
+    </div>
+
+    <!-- Shop Overlay -->
+    <div id="shop" style="display: none;">
+        <div class="shop-panel">
+            <div class="shop-header">
+                <h2 class="shop-title">✦ DIVA SHOP ✦</h2>
+                <div class="shop-coins">COINS: <span id="shop-coins-value">0</span></div>
+            </div>
+            <div class="shop-items">
+                <div class="shop-item" id="buy-hp">
+                    <div class="item-icon">💖</div>
+                    <div class="item-info">
+                        <span class="item-name">HEAL 30 HP</span>
+                        <span class="item-price">200 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+                <div class="shop-item" id="buy-dmg">
+                    <div class="item-icon">🔥</div>
+                    <div class="item-info">
+                        <span class="item-name">DMG BOOST</span>
+                        <span class="item-price">1000 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+                <div class="shop-item" id="buy-speed">
+                    <div class="item-icon">⚡</div>
+                    <div class="item-info">
+                        <span class="item-name">SPD BOOST</span>
+                        <span class="item-price">500 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+            </div>
+            <button id="shop-close-button" class="menu-btn">
+                <span>VOLTAR</span>
+                <span class="icon">↩</span>
+            </button>
         </div>
     </div>
 
@@ -88,7 +128,8 @@
     <!-- HUD do Jogo -->
     <div id="hud" style="display: none;">
         <div class="score-container">
-            SCORE: <span id="score-value">000000</span>
+            <div>SCORE: <span id="score-value">000000</span></div>
+            <div class="coins-hud">COINS: <span id="coins-value">000</span></div>
         </div>
         <div class="hotbar-container">
             <div class="hotbar-slot active" id="slot-1"><span class="slot-num">1</span><span class="slot-item">SWORD</span></div>
