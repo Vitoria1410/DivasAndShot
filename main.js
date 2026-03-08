@@ -50,7 +50,27 @@ const treeColliders = [];
 const enemies = []; // { mesh, state, patrolDir, patrolTimer, type }
 const bullets = [];
 const webs = [];
+const ghosts = []; // { mesh, timer }
+const powerups = []; // { mesh, type, timer }
 let gameStarted = false;
+
+// Juicy Feedback State
+let shakeIntensity = 0;
+let shakeTimer = 0;
+
+// Overclock State
+let overclockTimer = 0;
+const OVERCLOCK_DURATION = 600; // 10s em 60fps
+
+// Dash State
+let canDash = true;
+let isDashing = false;
+let dashCooldown = 0;
+let dashGhostTimer = 0;
+const DASH_COOLDOWN_MAX = 60;
+const DASH_SPEED = 0.5;
+const DASH_DURATION = 15;
+
 const mouse = new THREE.Vector2();
 const worldMouse = new THREE.Vector3();
 let aimDir = new THREE.Vector3(0, 1, 0);
@@ -66,6 +86,11 @@ let lastDirectionKey = 'KeyS'; // Para rastrear a última pose horizontal
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'KeyW' || e.code === 'KeyS') lastDirectionKey = e.code;
+    
+    // Trigger Dash
+    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
+        startDash();
+    }
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
@@ -135,6 +160,9 @@ class SoundManager {
     }
 }
 const sounds = new SoundManager();
+
+let lastShootTime = 0;
+const FIRE_RATE_BASE = 250; // ms
 
 // --- SCENE ---
 const scene = new THREE.Scene();
@@ -667,6 +695,11 @@ function onEnemyKilled(enemy) {
     score += reward;
     divaCoins += coins;
     updateHUD();
+    
+    // Spawn Overclock 10% chance
+    if (Math.random() < 0.15) {
+        spawnOverclock(enemy.mesh.position);
+    }
 }
 
 function slash() {
@@ -714,14 +747,28 @@ function shoot() {
         slash();
         return;
     } else if (currentWeapon === 'GUN') {
+        const now = Date.now();
+        const fireRate = overclockTimer > 0 ? FIRE_RATE_BASE / 2 : FIRE_RATE_BASE;
+        
+        if (now - lastShootTime < fireRate) return;
+        lastShootTime = now;
+        
         sounds.playShoot();
+        triggerShake(0.15, 5); // Pequeno shake no tiro
+        
+        const bulletColor = overclockTimer > 0 ? 0xff00ff : 0x00ffff;
+        const bulletScale = overclockTimer > 0 ? 1.5 : 1.0;
+        
         const bullet = new THREE.Mesh(
-            new THREE.CircleGeometry(0.18, 8),
-            new THREE.MeshBasicMaterial({ color: 0x00ffff })
+            new THREE.CircleGeometry(0.18 * bulletScale, 8),
+            new THREE.MeshBasicMaterial({ color: bulletColor })
         );
-        bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0); // Z alto pra passar sobre coisas
+        bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0);
         bullets.push({ mesh: bullet, dir: aimDir.clone() });
         scene.add(bullet);
+        
+        // Neon Sparks
+        createSparks(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0));
 
         // Cooldown/Recuo visual da arma
         gunMesh.position.y -= 0.3;
@@ -732,6 +779,17 @@ function shoot() {
 function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
+        
+        if (b.isSpark) {
+            b.mesh.position.addScaledVector(b.dir, b.speed);
+            b.timer--;
+            b.mesh.material.opacity = b.timer / 40;
+            if (b.timer <= 0) {
+                scene.remove(b.mesh); bullets.splice(i, 1);
+            }
+            continue;
+        }
+
         b.mesh.position.addScaledVector(b.dir, BULLET_SPEED);
 
         if (b.mesh.position.distanceTo(playerGroup.position) > 28) {
@@ -760,9 +818,10 @@ function updateWebs() {
 
         // Colisão da teia com o Player
         if (w.mesh.position.distanceTo(playerGroup.position) < 1.2) {
-            if (damageCooldown === 0) {
+            if (damageCooldown === 0 && !isDashing) { // Imunidade no dash
                 playerHP -= WEB_DAMAGE;
                 damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                triggerShake(0.4, 20); // Shake no dano
                 if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
             }
             scene.remove(w.mesh); webs.splice(i, 1);
@@ -773,6 +832,87 @@ function updateWebs() {
             scene.remove(w.mesh); webs.splice(i, 1);
         }
     }
+}
+
+// --- JUICY FEEDBACK & PARTÍCULAS ---
+function triggerShake(intensity, duration = 15) {
+    shakeIntensity = intensity;
+    shakeTimer = duration;
+}
+
+function createSparks(pos, count = 8) {
+    for (let i = 0; i < count; i++) {
+        const spark = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.12, 0.45),
+            new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 1 })
+        );
+        spark.position.copy(pos);
+        spark.position.z = 1.0;
+        
+        const angle = Math.random() * Math.PI * 2;
+        const force = 0.1 + Math.random() * 0.2;
+        const dir = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0);
+        
+        bullets.push({ // Reutilizando a lógica de bullets pra partícula simples
+            mesh: spark, 
+            dir: dir, 
+            speed: force,
+            isSpark: true,
+            timer: 20 + Math.random() * 20 
+        });
+        scene.add(spark);
+    }
+}
+
+// --- DASH & GHOST EFFECT ---
+function startDash() {
+    if (!canDash || isDashing || !gameStarted) return;
+    
+    canDash = false;
+    isDashing = true;
+    dashCooldown = DASH_COOLDOWN_MAX;
+    
+    setTimeout(() => {
+        isDashing = false;
+    }, DASH_DURATION * 16); // Estimado pra frames
+}
+
+function spawnGhost() {
+    const ghostGeo = playerVisual.geometry.clone();
+    const ghostMat = playerMat.clone();
+    ghostMat.transparent = true;
+    ghostMat.opacity = 0.4;
+    
+    const ghost = new THREE.Mesh(ghostGeo, ghostMat);
+    ghost.position.copy(playerGroup.position);
+    ghost.position.y += 1.8; // Align with playerVisual
+    ghost.scale.copy(playerVisual.scale);
+    ghost.rotation.copy(playerGroup.rotation);
+    
+    scene.add(ghost);
+    ghosts.push({ mesh: ghost, timer: 15 });
+}
+
+// --- OVERCLOCK POWERUP ---
+function spawnOverclock(pos) {
+    const group = new THREE.Group();
+    const icon = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.6, 0),
+        new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true })
+    );
+    group.add(icon);
+    
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.8, 1.0, 32),
+        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+    );
+    group.add(ring);
+    
+    group.position.copy(pos);
+    group.position.z = 0.5;
+    scene.add(group);
+    
+    powerups.push({ mesh: group, type: 'OVERCLOCK' });
 }
 
 // --- GAME OVER ---
@@ -919,10 +1059,19 @@ function updateMovement() {
 
     if (mx !== 0 || my !== 0) {
         const len = Math.sqrt(mx * mx + my * my);
-        nextX += (mx / len) * PLAYER_SPEED;
-        nextY += (my / len) * PLAYER_SPEED;
+        const speed = isDashing ? DASH_SPEED : PLAYER_SPEED;
+        nextX += (mx / len) * speed;
+        nextY += (my / len) * speed;
 
         playerState = 'walk';
+        
+        if (isDashing) {
+            dashGhostTimer--;
+            if (dashGhostTimer <= 0) {
+                spawnGhost();
+                dashGhostTimer = 3;
+            }
+        }
 
         // Prioridade lateral na animação se houver movimento Horizontal
         if (mx !== 0) {
@@ -1029,16 +1178,51 @@ function animate() {
         updateWebs();
         updateHPBar();
         updateParticles();
-
-        // Desativa a animação de frames já que temos apenas 1 frame estático
-        if (playerMat.map) {
-            playerMat.map.offset.x = 0;
+        
+        // Handle Timers
+        if (dashCooldown > 0) dashCooldown--;
+        if (dashCooldown === 0) canDash = true;
+        
+        if (overclockTimer > 0) {
+            overclockTimer--;
+            if (overclockTimer === 0) {
+                // Terminou OC
+            }
+        }
+        
+        // Update Shake
+        if (shakeTimer > 0) {
+            shakeTimer--;
+            const sx = (Math.random() - 0.5) * shakeIntensity;
+            const sy = (Math.random() - 0.5) * shakeIntensity;
+            camera.position.x += sx;
+            camera.position.y += sy;
+            shakeIntensity *= 0.9;
         }
 
-        if (damageCooldown > 0) damageCooldown--;
-        playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
-
-        // IA dos Inimigos
+        // Fading Ghosts
+        for (let i = ghosts.length - 1; i >= 0; i--) {
+            ghosts[i].timer--;
+            ghosts[i].mesh.material.opacity = ghosts[i].timer / 15;
+            if (ghosts[i].timer <= 0) {
+                scene.remove(ghosts[i].mesh); ghosts.splice(i, 1);
+            }
+        }
+        
+        // Powerups Animation & Collision
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            const p = powerups[i];
+            p.mesh.rotation.y += 0.05;
+            p.mesh.position.y += Math.sin(Date.now() * 0.005) * 0.005;
+            
+            if (p.mesh.position.distanceTo(playerGroup.position) < 2.0) {
+                if (p.type === 'OVERCLOCK') {
+                    overclockTimer = OVERCLOCK_DURATION;
+                    sounds.playBuy();
+                }
+                scene.remove(p.mesh); powerups.splice(i, 1);
+            }
+        }
         enemies.forEach(enemy => {
             const mesh = enemy.mesh;
             const dx = playerGroup.position.x - mesh.position.x;
@@ -1052,9 +1236,10 @@ function animate() {
                     mesh.position.x += Math.cos(angle) * ENEMY_SPEED;
                     mesh.position.y += Math.sin(angle) * ENEMY_SPEED;
                     mesh.rotation.z = angle - Math.PI / 2;
-                    if (dist < 1.5 && damageCooldown === 0) {
+                    if (dist < 1.5 && damageCooldown === 0 && !isDashing) {
                         playerHP -= DAMAGE_PER_HIT;
                         damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                        triggerShake(0.5, 25);
                         if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
                     }
                 } else {
