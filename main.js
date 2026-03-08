@@ -525,7 +525,7 @@ function createFrog() {
         new THREE.PlaneGeometry(1.6, 0.1),
         new THREE.MeshBasicMaterial({ color: 0x00ff00 })
     );
-    enemyHpBar.position.set(0, 1.4, 0.21);
+    enemyHpBar.position.set(0, 2.4, 0.21);
     frog.add(enemyHpBar);
 
     const angle = Math.random() * Math.PI * 2;
@@ -604,12 +604,10 @@ function createSpider() {
 
 function createPopDiva() {
     const diva = new THREE.Group();
-    // Corpo Brilhante
-    const body = new THREE.Mesh(
-        new THREE.OctahedronGeometry(0.8, 1),
-        new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
-    );
-    diva.add(body);
+    const divaMat = new THREE.MeshBasicMaterial({ map: popDivaTex, transparent: true, alphaTest: 0.1 });
+    const divaVisual = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), divaMat);
+    divaVisual.position.y = 1.0;
+    diva.add(divaVisual);
 
     // Aura Neon
     const aura = new THREE.Mesh(
@@ -1372,7 +1370,10 @@ function animate() {
                     const angle = Math.atan2(dy, dx);
                     mesh.position.x += Math.cos(angle) * ENEMY_SPEED;
                     mesh.position.y += Math.sin(angle) * ENEMY_SPEED;
-                    mesh.rotation.z = angle - Math.PI / 2;
+
+                    // Flip sprite baseado na direção do player
+                    enemy.visual.scale.x = dx > 0 ? -1 : 1;
+                    mesh.rotation.z = 0; // Mantém estático
 
                     // Altera para PNG de ataque ao estar em Chase
                     if (enemy.mat.map !== frogAttackTex) enemy.mat.map = frogAttackTex;
@@ -1394,7 +1395,10 @@ function animate() {
                     }
                     mesh.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED;
                     mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED;
-                    mesh.rotation.z = Math.sin(Date.now() * 0.002 + enemy.patrolDir) * 0.3;
+
+                    // Flip sprite baseado na direção da patrulha
+                    enemy.visual.scale.x = Math.cos(enemy.patrolDir) > 0 ? -1 : 1;
+                    mesh.rotation.z = 0;
 
                     // Altera para PNG Idle ao patrulhar
                     if (enemy.mat.map !== frogIdleTex) enemy.mat.map = frogIdleTex;
