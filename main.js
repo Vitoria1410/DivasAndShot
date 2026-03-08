@@ -1439,9 +1439,19 @@ function animate() {
                     mesh.position.y += Math.sin(angle) * POP_DIVA_SPEED + Math.sin(time) * 0.05;
                     mesh.rotation.z = time * 0.5;
 
-                    if (dist < 1.0 && damageCooldown === 0) {
+                    if (dist < 1.2 && damageCooldown === 0) {
                         playerHP -= 20;
                         damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+
+                        // Roubo de Dinheiro (25%)
+                        const stolen = Math.floor(divaCoins * 0.25);
+                        if (stolen > 0) {
+                            divaCoins -= stolen;
+                            updateHUD();
+                            // Poderia adicionar um efeito neon aqui futuramente
+                            console.log(`POACHED! Stole ${stolen} CD`);
+                        }
+
                         if (sounds) sounds.playDeath(); // Som de dano
                         if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
                     }
