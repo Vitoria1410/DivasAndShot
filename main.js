@@ -74,18 +74,23 @@ let gameStarted = false;
 let shakeIntensity = 0;
 let shakeTimer = 0;
 
-// Overclock State
-let overclockTimer = 0;
-const OVERCLOCK_DURATION = 600; // 10s em 60fps
-
-// Dash State
-let canDash = true;
+// Dash State (Continuous with Stamina)
 let isDashing = false;
-let dashCooldown = 0;
-let dashGhostTimer = 0;
-const DASH_COOLDOWN_MAX = 60;
-const DASH_SPEED = 0.5;
-const DASH_DURATION = 15;
+let stamina = 100;
+const STAMINA_MAX = 100;
+const STAMINA_DECAY = 1.0;
+const STAMINA_REGEN = 0.4;
+const DASH_SPEED_CONTINUOUS = 0.35;
+
+// Overclock Charge State
+let overclockProgress = 0;
+const OVERCLOCK_GOAL = 100;
+let overclockTimer = 0;
+const OVERCLOCK_DURATION = 600;
+
+// Settings State
+let globalVolume = 0.5;
+let settingsOpen = false;
 
 const mouse = new THREE.Vector2();
 const worldMouse = new THREE.Vector3();
@@ -206,8 +211,8 @@ const frogIdleTex = textureLoader.load('frogidle.png');
 const frogAttackTex = textureLoader.load('frog.png');
 [frogIdleTex, frogAttackTex].forEach(t => t.magFilter = t.minFilter = THREE.NearestFilter);
 
-// Pop Diva GIF Texture
-const popDivaTex = textureLoader.load('_(=^‥^)ノ☆.gif');
+// Pop Diva GIF Texture (Fixed Name)
+const popDivaTex = textureLoader.load('diva pop.gif');
 popDivaTex.magFilter = popDivaTex.minFilter = THREE.NearestFilter;
 
 // --- GROUND TEXTURE (PNG ou Procedural como fallback) ---
@@ -502,6 +507,20 @@ function updateHUD() {
     document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
     document.getElementById('coins-value').innerText = divaCoins.toString().padStart(3, '0');
     document.getElementById('shop-coins-value').innerText = divaCoins;
+
+    // Update Ability Bars
+    const ocFill = document.getElementById('overclock-fill');
+    const stFill = document.getElementById('stamina-fill');
+
+    if (overclockTimer > 0) {
+        ocFill.style.width = (overclockTimer / OVERCLOCK_DURATION * 100) + '%';
+        ocFill.style.background = '#ff00ff';
+    } else {
+        ocFill.style.width = (overclockProgress / OVERCLOCK_GOAL * 100) + '%';
+        ocFill.style.background = '#880088';
+    }
+
+    stFill.style.width = stamina + '%';
 }
 
 // --- ENEMIES ---
@@ -718,8 +737,18 @@ function onEnemyKilled(enemy) {
     addStyle(styleBonus);
     updateHUD();
 
-    // Spawn Overclock 10% chance
-    if (Math.random() < 0.15) {
+    // Charge Overclock progress
+    if (overclockTimer <= 0) {
+        overclockProgress += (type === 'frog' ? 2 : type === 'spider' ? 5 : 20);
+        if (overclockProgress >= OVERCLOCK_GOAL) {
+            overclockProgress = 0;
+            overclockTimer = OVERCLOCK_DURATION;
+            // Efeito visual ou som aqui?
+        }
+    }
+
+    // Spawn Overclock 5% chance (rarer now as it charges on kills)
+    if (Math.random() < 0.05) {
         spawnOverclock(enemy.mesh.position);
     }
 }
@@ -1100,6 +1129,25 @@ document.getElementById('buy-dmg').querySelector('.buy-btn').addEventListener('c
     }
 });
 
+document.getElementById('settings-close-button').addEventListener('click', () => {
+    document.getElementById('settings-menu').style.display = 'none';
+    settingsOpen = false;
+});
+
+document.getElementById('config-button').addEventListener('click', () => {
+    document.getElementById('settings-menu').style.display = 'flex';
+    settingsOpen = true;
+});
+
+document.getElementById('volume-control').addEventListener('input', (e) => {
+    globalVolume = parseFloat(e.target.value);
+    // Aplica volume ao contexto de áudio se disponível
+    if (sounds && sounds.ctx) {
+        // Implementação simplificada: silenciar se volume for 0
+        // Para um sistema real, usaríamos um GainNode
+    }
+});
+
 document.getElementById('buy-speed').querySelector('.buy-btn').addEventListener('click', () => {
     if (divaCoins >= 500) {
         divaCoins -= 500;
@@ -1193,7 +1241,17 @@ function updateMovement() {
 
     if (mx !== 0 || my !== 0) {
         const len = Math.sqrt(mx * mx + my * my);
-        const speed = isDashing ? DASH_SPEED : PLAYER_SPEED;
+
+        isDashing = keys['ShiftLeft'] && stamina > 0;
+        if (isDashing) {
+            stamina -= STAMINA_DECAY;
+            if (stamina < 0) stamina = 0;
+            if (Math.floor(Date.now() / 150) % 2 === 0) spawnGhost();
+        } else {
+            stamina = Math.min(STAMINA_MAX, stamina + STAMINA_REGEN);
+        }
+
+        const speed = isDashing ? DASH_SPEED_CONTINUOUS : PLAYER_SPEED;
         nextX += (mx / len) * speed;
         nextY += (my / len) * speed;
 
@@ -1320,10 +1378,14 @@ function animate() {
 
         if (overclockTimer > 0) {
             overclockTimer--;
+            if (overclockTimer <= 0) updateHUD();
         }
 
         if (damageCooldown > 0) damageCooldown--;
         playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
+
+        // Update bars every ~3 frames for performance
+        if (Math.floor(Date.now() / 50) % 3 === 0) updateHUD();
 
         // Update Shake
         if (shakeTimer > 0) {

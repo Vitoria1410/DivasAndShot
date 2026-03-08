@@ -14,20 +14,7 @@
 <body>
     <!-- Overlay de Menu -->
     <div id="game-menu">
-        <div class="menu-content">
-            <!-- Neon Sci-Fi Decor -->
-            <div class="neon-glow-container">
-                <div class="glow-circle"></div>
-                <div class="sparkle s1">✧</div>
-                <div class="sparkle s2">✦</div>
-                <div class="sparkle s3">✧</div>
-                <div class="sparkle s4">✦</div>
-                <div class="sparkle s5">✧</div>
-                <div class="sparkle s6">✦</div>
-                <div class="sparkle s7">✧</div>
-                <div class="sparkle s8">✦</div>
-            </div>
-
+        <div class="menu-content sci-fi-border">
             <h1 class="glitch" data-text="DIVAS & SHOT">DIVAS <span class="ampersand">&</span> SHOT</h1>
 
             <div class="subtitle-container">
@@ -46,7 +33,7 @@
                     <span class="icon">🛒</span>
                 </button>
                 <button id="config-button" class="menu-btn">
-                    <span>CONFIG</span>
+                    <span>SETTINGS</span>
                     <span class="icon">⚙️</span>
                 </button>
             </div>
@@ -65,7 +52,7 @@
 
     <!-- Shop Overlay -->
     <div id="shop" style="display: none;">
-        <div class="shop-panel">
+        <div class="shop-panel sci-fi-border">
             <div class="shop-header">
                 <h2 class="shop-title">✦ DIVA SHOP ✦</h2>
                 <div class="shop-coins">COINS: <span id="shop-coins-value">0</span></div>
@@ -124,7 +111,7 @@
 
     <!-- Game Over Screen -->
     <div id="game-over">
-        <div class="game-over-content">
+        <div class="game-over-content sci-fi-border">
             <h2 class="game-over-title">GAME OVER</h2>
             <p class="game-over-sub">você foi derrubada pelas divarzinhas 💀</p>
             <button id="restart-button" class="menu-btn">
@@ -136,7 +123,7 @@
 
     <!-- Inventory Overlay -->
     <div id="inventory">
-        <div class="inventory-panel">
+        <div class="inventory-panel sci-fi-border">
             <div class="inv-header">
                 <h2 class="inv-title">✦ INVENTÁRIO ✦</h2>
                 <span class="inv-close">[I] FECHAR</span>
@@ -169,10 +156,27 @@
             </div>
             <div class="style-label">STYLE</div>
         </div>
+        <!-- Progress Bars (Overclock & Dash) -->
+        <div class="ability-bars">
+            <div class="bar-unit">
+                <div class="bar-label">OVERCLOCK</div>
+                <div class="bar-bg overclock-bg">
+                    <div id="overclock-fill" class="bar-fill"></div>
+                </div>
+            </div>
+            <div class="bar-unit">
+                <div class="bar-label">STAMINA</div>
+                <div class="bar-bg stamina-bg">
+                    <div id="stamina-fill" class="bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
         <div class="hotbar-container">
-            <div class="hotbar-slot active" id="slot-1"><span class="slot-num">1</span><span
-                    class="slot-item">SWORD</span></div>
-            <div class="hotbar-slot" id="slot-2"><span class="slot-num">2</span><span class="slot-item">GUN</span></div>
+            <div class="hotbar-slot active" id="slot-1"><span class="slot-num">1</span><img src="attack.png"
+                    class="slot-img"></div>
+            <div class="hotbar-slot" id="slot-2"><span class="slot-num">2</span><img src="gun.png" class="slot-img">
+            </div>
             <div class="hotbar-slot" id="slot-3"><span class="slot-num">3</span></div>
             <div class="hotbar-slot" id="slot-4"><span class="slot-num">4</span></div>
             <div class="hotbar-slot" id="slot-5"><span class="slot-num">5</span></div>
@@ -181,6 +185,18 @@
         <div class="crosshair"></div>
         <div id="round-feed">>> SISTEMA ONLINE... AGUARDANDO COMANDO.</div>
         <div id="round-announcer" style="display: none;">ROUND 1</div>
+    </div>
+
+    <!-- Settings Menu -->
+    <div id="settings-menu" class="overlay">
+        <div class="panel sci-fi-border">
+            <h2 class="panel-title">SYSTEM SETTINGS</h2>
+            <div class="setting-item">
+                <label>GLOBAL VOLUME</label>
+                <input type="range" id="volume-control" min="0" max="1" step="0.1" value="0.5">
+            </div>
+            <button class="close-btn" id="settings-close-button">BACK</button>
+        </div>
     </div>
 
     <!-- Container do Three.js -->
