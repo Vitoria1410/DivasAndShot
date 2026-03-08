@@ -39,6 +39,15 @@ let damageCooldown = 0;
 let isGameOver = false;
 let inventoryOpen = false;
 let shopOpen = false;
+let stylePoints = 0;
+let styleRank = 'D';
+const STYLE_MAX = 5000;
+const STYLE_DECAY = 1.5; // Pontos perdidos por frame
+const RANK_THRESHOLDS = { 'S': 4000, 'A': 2500, 'B': 1000, 'C': 300, 'D': 0 };
+
+// Neon Chips State
+let hasRicochet = false;
+let hasPierce = false;
 
 // Animation State
 let playerState = 'idle'; // 'idle' or 'walk'
@@ -86,7 +95,7 @@ let lastDirectionKey = 'KeyS'; // Para rastrear a última pose horizontal
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
     if (e.code === 'KeyW' || e.code === 'KeyS') lastDirectionKey = e.code;
-    
+
     // Trigger Dash
     if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
         startDash();
@@ -598,7 +607,7 @@ function createPopDiva() {
         new THREE.MeshBasicMaterial({ color: 0xffffff, wireframe: true })
     );
     diva.add(body);
-    
+
     // Aura Neon
     const aura = new THREE.Mesh(
         new THREE.CircleGeometry(1.2, 16),
@@ -669,9 +678,9 @@ function updateEnemyHP(enemy, damage) {
     const maxHp = enemy.type === 'frog' ? ENEMY_MAX_HP : (enemy.type === 'spider' ? ENEMY_MAX_HP * 0.8 : POP_DIVA_HP);
     const ratio = Math.max(0, enemy.hp / maxHp);
     enemy.hpBar.scale.x = ratio;
-    enemy.hpBar.position.x = -( (enemy.type === 'pop' ? 1.2 : 1.6) * (1 - ratio)) / 2;
+    enemy.hpBar.position.x = -((enemy.type === 'pop' ? 1.2 : 1.6) * (1 - ratio)) / 2;
     enemy.hpBar.material.color.set(ratio > 0.5 ? 0x00ff00 : ratio > 0.25 ? 0xffff00 : 0xff0000);
-    
+
     if (enemy.hp > 0) sounds.playHit();
     return enemy.hp <= 0;
 }
@@ -680,22 +689,24 @@ function onEnemyKilled(enemy) {
     sounds.playDeath();
     scene.remove(enemy.mesh);
     const type = enemy.type;
-    
+
     let reward = 100;
     let coins = 10;
-    
+    let styleBonus = 150;
+
     if (type === 'frog') {
-        reward = 100; coins = 15; createFrog();
+        reward = 100; coins = 15; styleBonus = 150; createFrog();
     } else if (type === 'spider') {
-        reward = 150; coins = 25; createSpider();
+        reward = 150; coins = 25; styleBonus = 250; createSpider();
     } else if (type === 'pop') {
-        reward = 300; coins = 50; createPopDiva();
+        reward = 300; coins = 50; styleBonus = 800; createPopDiva();
     }
-    
+
     score += reward;
     divaCoins += coins;
+    addStyle(styleBonus);
     updateHUD();
-    
+
     // Spawn Overclock 10% chance
     if (Math.random() < 0.15) {
         spawnOverclock(enemy.mesh.position);
@@ -749,16 +760,16 @@ function shoot() {
     } else if (currentWeapon === 'GUN') {
         const now = Date.now();
         const fireRate = overclockTimer > 0 ? FIRE_RATE_BASE / 2 : FIRE_RATE_BASE;
-        
+
         if (now - lastShootTime < fireRate) return;
         lastShootTime = now;
-        
+
         sounds.playShoot();
         triggerShake(0.15, 5); // Pequeno shake no tiro
-        
+
         const bulletColor = overclockTimer > 0 ? 0xff00ff : 0x00ffff;
         const bulletScale = overclockTimer > 0 ? 1.5 : 1.0;
-        
+
         const bullet = new THREE.Mesh(
             new THREE.CircleGeometry(0.18 * bulletScale, 8),
             new THREE.MeshBasicMaterial({ color: bulletColor })
@@ -766,7 +777,7 @@ function shoot() {
         bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0);
         bullets.push({ mesh: bullet, dir: aimDir.clone() });
         scene.add(bullet);
-        
+
         // Neon Sparks
         createSparks(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0));
 
@@ -779,7 +790,7 @@ function shoot() {
 function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
-        
+
         if (b.isSpark) {
             b.mesh.position.addScaledVector(b.dir, b.speed);
             b.timer--;
@@ -792,6 +803,18 @@ function updateBullets() {
 
         b.mesh.position.addScaledVector(b.dir, BULLET_SPEED);
 
+        // Ricochet Logic
+        if (hasRicochet) {
+            if (Math.abs(b.mesh.position.x) > MAP_LIMIT) {
+                b.dir.x *= -1;
+                b.mesh.position.x = Math.sign(b.mesh.position.x) * MAP_LIMIT;
+            }
+            if (Math.abs(b.mesh.position.y) > MAP_LIMIT) {
+                b.dir.y *= -1;
+                b.mesh.position.y = Math.sign(b.mesh.position.y) * MAP_LIMIT;
+            }
+        }
+
         if (b.mesh.position.distanceTo(playerGroup.position) > 28) {
             scene.remove(b.mesh); bullets.splice(i, 1); continue;
         }
@@ -799,7 +822,14 @@ function updateBullets() {
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (b.mesh.position.distanceTo(enemies[j].mesh.position) < 1.5) {
                 const isDead = updateEnemyHP(enemies[j], GUN_DAMAGE);
-                scene.remove(b.mesh); bullets.splice(i, 1);
+
+                // Lógica de Neon Chips: Pierce
+                if (!hasPierce) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                } else {
+                    // Pierce: Bullet continues but maybe reduce damage? or just keep going
+                }
 
                 if (isDead) {
                     onEnemyKilled(enemies[j]);
@@ -809,6 +839,43 @@ function updateBullets() {
             }
         }
     }
+}
+
+function addStyle(points) {
+    stylePoints = Math.min(STYLE_MAX, stylePoints + points);
+    updateStyleUI();
+}
+
+function updateStyle() {
+    if (stylePoints > 0) {
+        stylePoints = Math.max(0, stylePoints - STYLE_DECAY);
+        updateStyleUI();
+    }
+}
+
+function updateStyleUI() {
+    let newRank = 'D';
+    if (stylePoints >= RANK_THRESHOLDS['S']) newRank = 'S';
+    else if (stylePoints >= RANK_THRESHOLDS['A']) newRank = 'A';
+    else if (stylePoints >= RANK_THRESHOLDS['B']) newRank = 'B';
+    else if (stylePoints >= RANK_THRESHOLDS['C']) newRank = 'C';
+
+    const rankEl = document.querySelector('.style-rank');
+    if (newRank !== styleRank) {
+        styleRank = newRank;
+        rankEl.innerText = styleRank;
+        rankEl.className = 'style-rank rank-' + styleRank;
+        rankEl.style.animation = 'none';
+        rankEl.offsetHeight; // trigger reflow
+        rankEl.style.animation = 'rankUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+        // Efeito visual Rank S
+        if (styleRank === 'S') document.body.classList.add('rank-S-active');
+        else document.body.classList.remove('rank-S-active');
+    }
+
+    const fill = document.getElementById('style-bar-fill');
+    fill.style.width = (stylePoints / STYLE_MAX * 100) + '%';
 }
 
 function updateWebs() {
@@ -822,6 +889,11 @@ function updateWebs() {
                 playerHP -= WEB_DAMAGE;
                 damageCooldown = DAMAGE_COOLDOWN_FRAMES;
                 triggerShake(0.4, 20); // Shake no dano
+
+                // Style Penalty: Resets style or drops points significantly
+                stylePoints = Math.max(0, stylePoints - 1500);
+                updateStyleUI();
+
                 if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
             }
             scene.remove(w.mesh); webs.splice(i, 1);
@@ -848,17 +920,17 @@ function createSparks(pos, count = 8) {
         );
         spark.position.copy(pos);
         spark.position.z = 1.0;
-        
+
         const angle = Math.random() * Math.PI * 2;
         const force = 0.1 + Math.random() * 0.2;
         const dir = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0);
-        
+
         bullets.push({ // Reutilizando a lógica de bullets pra partícula simples
-            mesh: spark, 
-            dir: dir, 
+            mesh: spark,
+            dir: dir,
             speed: force,
             isSpark: true,
-            timer: 20 + Math.random() * 20 
+            timer: 20 + Math.random() * 20
         });
         scene.add(spark);
     }
@@ -867,11 +939,11 @@ function createSparks(pos, count = 8) {
 // --- DASH & GHOST EFFECT ---
 function startDash() {
     if (!canDash || isDashing || !gameStarted) return;
-    
+
     canDash = false;
     isDashing = true;
     dashCooldown = DASH_COOLDOWN_MAX;
-    
+
     setTimeout(() => {
         isDashing = false;
     }, DASH_DURATION * 16); // Estimado pra frames
@@ -883,7 +955,7 @@ function spawnGhost() {
     ghostMat.transparent = true;
     ghostMat.opacity = 0.4;
     ghostMat.color.set(0xff00ff); // Pink Neon
-    
+
     if (ghostMat.map) {
         ghostMat.map = ghostMat.map.clone();
         ghostMat.map.needsUpdate = true;
@@ -893,7 +965,7 @@ function spawnGhost() {
     ghost.position.y += 1.8; // Align with playerVisual
     ghost.scale.copy(playerVisual.scale);
     ghost.rotation.copy(playerGroup.rotation);
-    
+
     scene.add(ghost);
     ghosts.push({ mesh: ghost, timer: 15 });
 }
@@ -906,17 +978,17 @@ function spawnOverclock(pos) {
         new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true })
     );
     group.add(icon);
-    
+
     const ring = new THREE.Mesh(
         new THREE.RingGeometry(0.8, 1.0, 32),
         new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
     );
     group.add(ring);
-    
+
     group.position.copy(pos);
     group.position.z = 0.5;
     scene.add(group);
-    
+
     powerups.push({ mesh: group, type: 'OVERCLOCK' });
 }
 
@@ -933,6 +1005,8 @@ function resetGame() {
     [...webs].forEach(w => scene.remove(w.mesh));
     enemies.length = 0; bullets.length = 0; webs.length = 0;
     score = 0; playerHP = PLAYER_MAX_HP; damageCooldown = 0; isGameOver = false; inventoryOpen = false;
+    stylePoints = 0;
+    updateStyleUI();
     document.getElementById('score-value').innerText = '000000';
     document.getElementById('inventory').style.display = 'none';
     updateHPBar();
@@ -957,15 +1031,15 @@ function toggleInventory() {
 document.getElementById('start-button').addEventListener('click', () => {
     const menu = document.getElementById('game-menu');
     const transitionScreen = document.getElementById('transition-screen');
-    
+
     menu.style.opacity = '0';
     setTimeout(() => {
         menu.style.display = 'none';
-        
+
         // Inicia Transição do GIF
         transitionScreen.style.display = 'flex';
         setTimeout(() => { transitionScreen.style.opacity = '1'; }, 50);
-        
+
         // Duração da animação do GIF (ex: 3 segundos)
         setTimeout(() => {
             transitionScreen.style.opacity = '0';
@@ -1021,6 +1095,29 @@ document.getElementById('buy-speed').querySelector('.buy-btn').addEventListener(
         updateHUD();
     }
 });
+
+document.getElementById('chip-ricochet').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 1500 && !hasRicochet) {
+        divaCoins -= 1500;
+        hasRicochet = true;
+        updateHUD();
+        sounds.playBuy();
+        document.getElementById('chip-ricochet').style.opacity = '0.5';
+        document.getElementById('chip-ricochet').querySelector('.buy-btn').innerText = 'OWNED';
+    }
+});
+
+document.getElementById('chip-pierce').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 2000 && !hasPierce) {
+        divaCoins -= 2000;
+        hasPierce = true;
+        updateHUD();
+        sounds.playBuy();
+        document.getElementById('chip-pierce').style.opacity = '0.5';
+        document.getElementById('chip-pierce').querySelector('.buy-btn').innerText = 'OWNED';
+    }
+});
+
 
 document.getElementById('restart-button').addEventListener('click', resetGame);
 
@@ -1083,7 +1180,7 @@ function updateMovement() {
         nextY += (my / len) * speed;
 
         playerState = 'walk';
-        
+
         if (isDashing) {
             dashGhostTimer--;
             if (dashGhostTimer <= 0) {
@@ -1197,18 +1294,19 @@ function animate() {
         updateWebs();
         updateHPBar();
         updateParticles();
-        
+        updateStyle(); // Decaimento de estilo
+
         // Handle Timers
         if (dashCooldown > 0) dashCooldown--;
         if (dashCooldown === 0) canDash = true;
-        
+
         if (overclockTimer > 0) {
             overclockTimer--;
         }
-        
+
         if (damageCooldown > 0) damageCooldown--;
         playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
-        
+
         // Update Shake
         if (shakeTimer > 0) {
             shakeTimer--;
@@ -1227,13 +1325,13 @@ function animate() {
                 scene.remove(ghosts[i].mesh); ghosts.splice(i, 1);
             }
         }
-        
+
         // Powerups Animation & Collision
         for (let i = powerups.length - 1; i >= 0; i--) {
             const p = powerups[i];
             p.mesh.rotation.y += 0.05;
             p.mesh.position.y += Math.sin(Date.now() * 0.005) * 0.005;
-            
+
             if (p.mesh.position.distanceTo(playerGroup.position) < 2.0) {
                 if (p.type === 'OVERCLOCK') {
                     overclockTimer = OVERCLOCK_DURATION;
@@ -1258,6 +1356,8 @@ function animate() {
                     if (dist < 1.5 && damageCooldown === 0 && !isDashing) {
                         playerHP -= DAMAGE_PER_HIT;
                         damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                        stylePoints = Math.max(0, stylePoints - 1000); // Penalidade no estilo
+                        updateStyleUI();
                         triggerShake(0.5, 25);
                         if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
                     }
@@ -1307,7 +1407,7 @@ function animate() {
                     mesh.position.x += Math.cos(angle) * POP_DIVA_SPEED + Math.cos(time) * 0.05;
                     mesh.position.y += Math.sin(angle) * POP_DIVA_SPEED + Math.sin(time) * 0.05;
                     mesh.rotation.z = time * 0.5;
-                    
+
                     if (dist < 1.0 && damageCooldown === 0) {
                         playerHP -= 20;
                         damageCooldown = DAMAGE_COOLDOWN_FRAMES;

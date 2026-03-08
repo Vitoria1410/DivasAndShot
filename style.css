@@ -612,4 +612,97 @@ canvas {
 
 .buy-btn:active {
     transform: scale(0.95);
-}
+}
+
+/* Style Meter */
+#style-meter {
+    position: absolute;
+    top: 40px;
+    right: 40px;
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    pointer-events: none;
+    font-family: 'Orbitron', sans-serif;
+    z-index: 100;
+}
+
+.style-rank {
+    font-size: 5rem;
+    font-weight: 900;
+    color: var(--neon-blue);
+    text-shadow: 0 0 20px var(--neon-blue);
+    margin-bottom: 5px;
+    transition: all 0.2s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+}
+
+@keyframes rankUp {
+    0% { transform: scale(1.5); opacity: 0; }
+    100% { transform: scale(1); opacity: 1; }
+}
+
+.style-bar-container {
+    width: 220px;
+    height: 12px;
+    background: rgba(0, 0, 0, 0.6);
+    border: 1px solid var(--hot-pink);
+    border-radius: 6px;
+    overflow: hidden;
+    box-shadow: 0 0 10px rgba(255, 0, 255, 0.2);
+}
+
+#style-bar-fill {
+    width: 0%;
+    height: 100%;
+    background: linear-gradient(90deg, var(--neon-blue), var(--hot-pink));
+    transition: width 0.1s linear;
+}
+
+.style-label {
+    font-size: 0.7rem;
+    color: var(--neon-blue);
+    margin-top: 8px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    font-weight: bold;
+}
+
+/* Rank Colors */
+.rank-D { color: #555 !important; text-shadow: 0 0 5px #222 !important; }
+.rank-C { color: var(--neon-blue) !important; text-shadow: 0 0 15px var(--neon-blue) !important; }
+.rank-B { color: var(--acid-green) !important; text-shadow: 0 0 15px var(--acid-green) !important; }
+.rank-A { color: #ffae00 !important; text-shadow: 0 0 20px #ffae00 !important; }
+.rank-S { color: var(--hot-pink) !important; text-shadow: 0 0 30px var(--hot-pink) !important; animation: rankSShimmer 1s infinite alternate; }
+
+@keyframes rankSShimmer {
+    from { transform: scale(1.1); filter: brightness(1); }
+    to { transform: scale(1.2); filter: brightness(1.3); }
+}
+
+/* Screen Effects */
+.rank-S-active #canvas-container {
+    filter: contrast(1.3) saturate(1.8) brightness(1.1);
+    box-shadow: inset 0 0 100px rgba(255, 0, 255, 0.3);
+}
+
+/* Shop Extras */
+.shop-subtitle {
+    color: var(--neon-blue);
+    font-size: 1.1rem;
+    margin: 25px 0 15px 0;
+    border-top: 1px dashed rgba(0, 255, 255, 0.3);
+    padding-top: 25px;
+    text-align: center;
+    letter-spacing: 2px;
+}
+
+.chips-grid {
+    display: grid !important;
+    grid-template-columns: 1fr 1fr;
+    gap: 15px;
+}
+
+.chip-item {
+    padding: 12px;
+}
+
