@@ -882,7 +882,12 @@ function spawnGhost() {
     const ghostMat = playerMat.clone();
     ghostMat.transparent = true;
     ghostMat.opacity = 0.4;
+    ghostMat.color.set(0xff00ff); // Pink Neon
     
+    if (ghostMat.map) {
+        ghostMat.map = ghostMat.map.clone();
+        ghostMat.map.needsUpdate = true;
+    }
     const ghost = new THREE.Mesh(ghostGeo, ghostMat);
     ghost.position.copy(playerGroup.position);
     ghost.position.y += 1.8; // Align with playerVisual
@@ -951,13 +956,27 @@ function toggleInventory() {
 // --- INTERAÇÃO ---
 document.getElementById('start-button').addEventListener('click', () => {
     const menu = document.getElementById('game-menu');
+    const transitionScreen = document.getElementById('transition-screen');
+    
     menu.style.opacity = '0';
     setTimeout(() => {
         menu.style.display = 'none';
-        document.getElementById('hud').style.display = 'flex';
-        gameStarted = true;
-        equipSlot(0); // Força a equipagem do primeiro slot ao iniciar
-        if (sounds.ctx.state === 'suspended') sounds.ctx.resume();
+        
+        // Inicia Transição do GIF
+        transitionScreen.style.display = 'flex';
+        setTimeout(() => { transitionScreen.style.opacity = '1'; }, 50);
+        
+        // Duração da animação do GIF (ex: 3 segundos)
+        setTimeout(() => {
+            transitionScreen.style.opacity = '0';
+            setTimeout(() => {
+                transitionScreen.style.display = 'none';
+                document.getElementById('hud').style.display = 'flex';
+                gameStarted = true;
+                equipSlot(0);
+                if (sounds.ctx.state === 'suspended') sounds.ctx.resume();
+            }, 1000); // Espera o Fade-Out
+        }, 3000); // Tempo do GIF
     }, 500);
 });
 
@@ -1185,10 +1204,10 @@ function animate() {
         
         if (overclockTimer > 0) {
             overclockTimer--;
-            if (overclockTimer === 0) {
-                // Terminou OC
-            }
         }
+        
+        if (damageCooldown > 0) damageCooldown--;
+        playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
         
         // Update Shake
         if (shakeTimer > 0) {
