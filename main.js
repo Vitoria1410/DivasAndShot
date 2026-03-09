@@ -102,13 +102,33 @@ let canSlash = true;
 let swordMesh;
 
 const keys = {};
-let lastDirectionKey = 'KeyS'; // Para rastrear a última pose horizontal
+let lastDirectionKey = 'KeyS';
 window.addEventListener('keydown', (e) => {
-    keys[e.code] = true;
-    if (e.code === 'KeyW' || e.code === 'ArrowUp') lastDirectionKey = 'KeyW';
-    if (e.code === 'KeyS' || e.code === 'ArrowDown') lastDirectionKey = 'KeyS';
+    const code = e.code;
+    const key = e.key.toLowerCase();
+    keys[code] = true;
+    keys[key] = true;
+
+    if (code === 'KeyW' || code === 'ArrowUp' || key === 'w') lastDirectionKey = 'KeyW';
+    if (code === 'KeyS' || code === 'ArrowDown' || key === 's') lastDirectionKey = 'KeyS';
+
+    // Suporte aos numerais
+    if (code >= 'Digit1' && code <= 'Digit6' && gameStarted) {
+        equipSlot(parseInt(code.replace('Digit', '')) - 1);
+    }
+
+    // Escape
+    if (code === 'Escape' && gameStarted) {
+        document.getElementById('game-menu').style.display = 'flex';
+        document.getElementById('game-menu').style.opacity = '1';
+        document.getElementById('hud').style.display = 'none';
+        gameStarted = false;
+    }
 });
-window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+    keys[e.key.toLowerCase()] = false;
+});
 
 let isAttacking = false;
 let attackTimer = null;
@@ -342,29 +362,16 @@ function updateParticles() {
 let treeTexture = null;
 
 function createTree(x, y) {
+    if (Math.abs(x) < 8 && Math.abs(y) < 8) return;
     const group = new THREE.Group();
-    if (treeTexture) {
-        const size = 22 + Math.random() * 10; // 22 a 32 unidades
-        const treeMat = new THREE.MeshBasicMaterial({
-            map: treeTexture, transparent: true, alphaTest: 0.1, depthWrite: false
-        });
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 1.15), treeMat);
-        // Eleva a arte para a raiz (base do tronco) ficar no Y = 0 do grupo
-        plane.position.set(0, size * 0.4, 0.5);
-        group.add(plane);
-
-        // Colisor esférico na base do tronco
-        treeColliders.push({ x: x, y: y, radius: size * 0.08 });
-    } else {
-        const s = 1.8 + Math.random() * 1;
-        const topColors = [0x1a4a1a, 0x1e5a1e, 0x224422];
-        group.add(new THREE.Mesh(
-            new THREE.CircleGeometry(s, 6),
-            new THREE.MeshBasicMaterial({ color: topColors[Math.floor(Math.random() * topColors.length)] })
-        ));
-        treeColliders.push({ x: x, y: y, radius: s });
-    }
-    // Determina o Z baseado no Y (Depth Sorting - árvores na frente sobrepõem as de trás)
+    const size = 22 + Math.random() * 10;
+    const treeMat = new THREE.MeshBasicMaterial({
+        map: treeTexture, transparent: true, alphaTest: 0.1, depthWrite: false
+    });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 1.15), treeMat);
+    plane.position.set(0, size * 0.4, 0.5);
+    group.add(plane);
+    treeColliders.push({ x: x, y: y, radius: size * 0.08 });
     group.position.set(x, y, -y * 0.01);
     scene.add(group);
 }
@@ -1197,52 +1204,43 @@ window.addEventListener('wheel', (e) => {
     }
 });
 
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && gameStarted) {
-        document.getElementById('game-menu').style.display = 'flex';
-        document.getElementById('game-menu').style.opacity = '1';
-        document.getElementById('hud').style.display = 'none';
-        gameStarted = false;
-        shopOpen = false;
-    }
-
-    // Suporte aos numerais 1 a 6 do teclado para Seleção de Itens da Hotbar
-    if (e.code >= 'Digit1' && e.code <= 'Digit6' && gameStarted) {
-        const slot = parseInt(e.code.replace('Digit', '')) - 1;
-        equipSlot(slot);
-    }
-});
 
 // --- MOVIMENTO WASD + Mira no Mouse ---
 function updateMovement() {
     if (!gameStarted || shopOpen || settingsOpen) return;
 
     let mx = 0, my = 0;
-    if (keys['KeyW'] || keys['ArrowUp']) my += 1;
-    if (keys['KeyS'] || keys['ArrowDown']) my -= 1;
-    if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
-    if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
+    if (keys['w'] || keys['KeyW'] || keys['ArrowUp']) my += 1;
+    if (keys['s'] || keys['KeyS'] || keys['ArrowDown']) my -= 1;
+    if (keys['a'] || keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+    if (keys['d'] || keys['KeyD'] || keys['ArrowRight']) mx += 1;
+
+    // Stamina regen and Dash check
+    const dashingRequested = keys['shift'] || keys['ShiftLeft'] || keys['ShiftRight'];
+    isDashing = dashingRequested && stamina > 0 && (mx !== 0 || my !== 0);
+
+    if (isDashing) {
+        stamina -= STAMINA_DECAY;
+        if (Math.floor(Date.now() / 150) % 2 === 0) spawnGhost();
+    } else {
+        stamina = Math.min(STAMINA_MAX, stamina + STAMINA_REGEN);
+    }
 
     let nextX = playerGroup.position.x;
     let nextY = playerGroup.position.y;
 
     if (mx !== 0 || my !== 0) {
         const len = Math.sqrt(mx * mx + my * my);
-
-        isDashing = keys['ShiftLeft'] && stamina > 0;
-        if (isDashing) {
-            stamina -= STAMINA_DECAY;
-            if (stamina < 0) stamina = 0;
-            if (Math.floor(Date.now() / 150) % 2 === 0) spawnGhost();
-        } else {
-            stamina = Math.min(STAMINA_MAX, stamina + STAMINA_REGEN);
-        }
-
         const speed = isDashing ? DASH_SPEED_CONTINUOUS : PLAYER_SPEED;
         nextX += (mx / len) * speed;
         nextY += (my / len) * speed;
 
         playerState = 'walk';
+
+        // Debug Feedback
+        if (Math.floor(Date.now() / 1000) % 10 === 0) {
+            updateRoundFeed(">> TRAÇÃO ÓTIMA DETECTADA...");
+        }
 
         if (isDashing) {
             dashGhostTimer--;
