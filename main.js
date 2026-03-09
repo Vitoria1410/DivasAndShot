@@ -75,6 +75,7 @@ let shakeTimer = 0;
 
 // Dash State (Continuous with Stamina)
 let isDashing = false;
+let dashGhostTimer = 0; // Adicionando definição que faltava
 let stamina = 100;
 const STAMINA_MAX = 100;
 const STAMINA_DECAY = 1.0;
@@ -436,9 +437,9 @@ playerVisual.position.set(0, 1.8, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
-    'front': textureLoader.load('walkfront.png.png'),
-    'back': textureLoader.load('backwalk.png.png'),
-    'side': textureLoader.load('sidewalk.png.png'),
+    'front': textureLoader.load('walkfront.png'),
+    'back': textureLoader.load('backwalk.png'),
+    'side': textureLoader.load('sidewalk.png'),
     'aim': textureLoader.load('gunaim.png'),
     'attack': textureLoader.load('attack.png'),
     'idle': textureLoader.load('idle.png'),
@@ -1204,7 +1205,6 @@ window.addEventListener('wheel', (e) => {
     }
 });
 
-
 // --- MOVIMENTO WASD + Mira no Mouse ---
 function updateMovement() {
     if (!gameStarted || shopOpen || settingsOpen) return;
@@ -1221,7 +1221,7 @@ function updateMovement() {
 
     if (isDashing) {
         stamina -= STAMINA_DECAY;
-        if (Math.floor(Date.now() / 150) % 2 === 0) spawnGhost();
+        if (stamina < 0) stamina = 0;
     } else {
         stamina = Math.min(STAMINA_MAX, stamina + STAMINA_REGEN);
     }
@@ -1237,11 +1237,6 @@ function updateMovement() {
 
         playerState = 'walk';
 
-        // Debug Feedback
-        if (Math.floor(Date.now() / 1000) % 10 === 0) {
-            updateRoundFeed(">> TRAÇÃO ÓTIMA DETECTADA...");
-        }
-
         if (isDashing) {
             dashGhostTimer--;
             if (dashGhostTimer <= 0) {
@@ -1253,16 +1248,14 @@ function updateMovement() {
         // Prioridade lateral na animação se houver movimento Horizontal
         if (mx !== 0) {
             playerDirection = 'side';
-            // O PNG nativo olha para esquerda: scale 1 = Esquerda, scale -1 = Direita.
             playerVisual.scale.x = mx < 0 ? 1 : -1;
         } else if (my > 0) {
             playerDirection = 'back';
-            playerVisual.scale.x = 1; // Reseta espelhamento
+            playerVisual.scale.x = 1;
         } else {
             playerDirection = 'front';
-            playerVisual.scale.x = 1; // Reseta espelhamento
+            playerVisual.scale.x = 1;
         }
-
         playerVisual.position.x = playerVisual.scale.x === 1 ? -0.3 : 0.3;
     } else {
         playerState = 'idle';
@@ -1326,18 +1319,15 @@ function updateMovement() {
     const dy = worldMouse.y - playerGroup.position.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len > 0) {
-        // Gira apenas a arma para o mouse
         aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
 
-        const weapon = HOTBAR[currentWeaponIndex];
-        if (weapon && isAttacking) {
-            if (weapon === 'GUN') {
-                // gunaim.png mira para a direita nativamente
+        const weaponStatus = HOTBAR[currentWeaponIndex];
+        if (weaponStatus && isAttacking) {
+            if (weaponStatus === 'GUN') {
                 playerVisual.scale.x = dx < 0 ? -1 : 1;
                 playerVisual.position.x = dx < 0 ? -0.4 : 0.4;
             } else {
-                // attack.png mira para a esquerda nativamente
                 playerVisual.scale.x = dx < 0 ? 1 : -1;
                 playerVisual.position.x = playerVisual.scale.x === 1 ? -0.6 : 0.6;
             }
@@ -1356,10 +1346,6 @@ function animate() {
         updateHPBar();
         updateParticles();
         updateStyle(); // Decaimento de estilo
-
-        // Handle Timers
-        if (dashCooldown > 0) dashCooldown--;
-        if (dashCooldown === 0) canDash = true;
 
         if (overclockTimer > 0) {
             overclockTimer--;
