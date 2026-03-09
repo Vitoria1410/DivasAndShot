@@ -46,31 +46,33 @@ html {
 /* Sci-Fi UI Details */
 .sci-fi-border {
     position: relative;
-    border: 2px solid var(--neon-blue);
-    background: rgba(10, 0, 26, 0.95);
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 0 15px rgba(0, 255, 255, 0.1);
+    border: 3px solid var(--neon-blue);
+    background: linear-gradient(135deg, rgba(10, 0, 26, 0.98), rgba(20, 0, 40, 0.95));
+    box-shadow: 0 0 30px rgba(0, 255, 255, 0.3), inset 0 0 20px rgba(0, 255, 255, 0.1);
+    backdrop-filter: blur(12px);
 }
 
 .sci-fi-border::before,
 .sci-fi-border::after {
     content: '';
     position: absolute;
-    width: 20px;
-    height: 20px;
-    border: 2px solid var(--hot-pink);
+    width: 30px;
+    height: 30px;
+    border: 4px solid var(--hot-pink);
     pointer-events: none;
+    filter: drop-shadow(0 0 8px var(--hot-pink));
 }
 
 .sci-fi-border::before {
-    top: -6px;
-    left: -6px;
+    top: -10px;
+    left: -10px;
     border-right: none;
     border-bottom: none;
 }
 
 .sci-fi-border::after {
-    bottom: -6px;
-    right: -6px;
+    bottom: -10px;
+    right: -10px;
     border-left: none;
     border-top: none;
 }
@@ -216,29 +218,28 @@ h1.glitch .ampersand {
 }
 
 .inventory-panel {
-    background: rgba(8, 0, 22, 0.97);
-    border: 2px solid rgba(0, 255, 255, 0.45);
-    border-radius: 16px;
-    padding: 30px 40px;
-    min-width: 400px;
-    box-shadow: 0 0 40px rgba(0, 255, 255, 0.25), 0 0 80px rgba(255, 0, 255, 0.1), inset 0 0 20px rgba(255, 0, 255, 0.04);
+    background: rgba(8, 0, 22, 0.98);
+    border-radius: 20px;
+    padding: 45px 55px;
+    min-width: 550px;
+    box-shadow: 0 0 50px rgba(0, 255, 255, 0.3);
 }
 
 .inv-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    margin-bottom: 22px;
-    padding-bottom: 14px;
-    border-bottom: 1px solid rgba(255, 0, 255, 0.3);
+    margin-bottom: 30px;
+    padding-bottom: 20px;
+    border-bottom: 2px solid rgba(255, 0, 255, 0.4);
 }
 
 .inv-title {
-    font-size: 1.3rem;
+    font-size: 2rem;
     color: var(--neon-blue);
     margin: 0;
-    letter-spacing: 3px;
-    text-shadow: 0 0 10px var(--neon-blue);
+    letter-spacing: 5px;
+    text-shadow: 0 0 15px var(--neon-blue);
 }
 
 .inv-close {
@@ -383,32 +384,31 @@ h1.glitch .ampersand {
 /* Hotbar na parte inferior */
 .hotbar-container {
     position: absolute;
-    bottom: 25px;
+    bottom: 35px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 12px;
-    padding: 10px;
-    background: rgba(10, 0, 26, 0.6);
-    border: 2px solid rgba(0, 255, 255, 0.4);
-    border-radius: 12px;
-    box-shadow: 0 0 20px rgba(0, 255, 255, 0.2), inset 0 0 10px rgba(255, 0, 255, 0.1);
-    backdrop-filter: blur(4px);
+    gap: 18px;
+    padding: 15px;
+    background: rgba(10, 0, 26, 0.85);
+    border: 3px solid rgba(0, 255, 255, 0.6);
+    border-radius: 16px;
+    box-shadow: 0 0 35px rgba(0, 255, 255, 0.3);
+    backdrop-filter: blur(8px);
     pointer-events: auto;
-    /* Para permitir cliques se necessário futuramente */
 }
 
 .hotbar-slot {
     position: relative;
-    width: 60px;
-    height: 60px;
-    background: rgba(8, 0, 22, 0.8);
-    border: 2px solid rgba(255, 0, 255, 0.3);
-    border-radius: 8px;
+    width: 85px;
+    height: 85px;
+    background: rgba(8, 0, 22, 0.9);
+    border: 3px solid rgba(255, 0, 255, 0.4);
+    border-radius: 12px;
     display: flex;
     justify-content: center;
     align-items: center;
-    transition: all 0.2s cubic-bezier(0.25, 0.8, 0.25, 1);
+    transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
 }
 
 .hotbar-slot.active {
@@ -809,11 +809,11 @@ canvas {
 /* Ability Bars HUD */
 .ability-bars {
     position: absolute;
-    bottom: 110px;
+    bottom: 145px;
     left: 50%;
     transform: translateX(-50%);
     display: flex;
-    gap: 30px;
+    gap: 45px;
     z-index: 60;
 }
 
@@ -821,23 +821,25 @@ canvas {
     display: flex;
     flex-direction: column;
     align-items: center;
-    gap: 4px;
+    gap: 8px;
 }
 
 .bar-label {
     font-family: 'Press Start 2P', cursive;
-    font-size: 0.5rem;
+    font-size: 0.65rem;
     color: #fff;
-    text-shadow: 0 0 5px var(--hot-pink);
+    text-shadow: 0 0 8px var(--hot-pink);
+    letter-spacing: 1px;
 }
 
 .bar-bg {
-    width: 120px;
-    height: 10px;
-    background: rgba(0, 0, 0, 0.6);
-    border: 1px solid rgba(255, 255, 255, 0.2);
-    border-radius: 5px;
+    width: 180px;
+    height: 14px;
+    background: rgba(0, 0, 0, 0.8);
+    border: 2px solid rgba(255, 255, 255, 0.3);
+    border-radius: 7px;
     overflow: hidden;
+    box-shadow: inset 0 0 5px rgba(0, 0, 0, 0.5);
 }
 
 .bar-fill {
@@ -900,21 +902,23 @@ canvas {
 
 input[type="range"] {
     -webkit-appearance: none;
+    appearance: none;
     width: 100%;
-    background: rgba(255, 255, 255, 0.1);
-    height: 8px;
-    border-radius: 4px;
+    background: rgba(255, 255, 255, 0.15);
+    height: 10px;
+    border-radius: 5px;
     outline: none;
 }
 
 input[type="range"]::-webkit-slider-thumb {
     -webkit-appearance: none;
-    width: 20px;
-    height: 20px;
+    appearance: none;
+    width: 24px;
+    height: 24px;
     background: var(--neon-blue);
     border-radius: 50%;
     cursor: pointer;
-    box-shadow: 0 0 10px var(--neon-blue);
+    box-shadow: 0 0 15px var(--neon-blue);
 }
 
 .close-btn {

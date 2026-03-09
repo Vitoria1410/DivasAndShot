@@ -1067,7 +1067,30 @@ function resetGame() {
 // --- INVENTÁRIO ---
 function toggleInventory() {
     inventoryOpen = !inventoryOpen;
-    document.getElementById('inventory').style.display = inventoryOpen ? 'flex' : 'none';
+    const invEl = document.getElementById('inventory');
+    invEl.style.display = inventoryOpen ? 'flex' : 'none';
+
+    if (inventoryOpen) {
+        const slots = document.querySelectorAll('.inv-slot');
+        const emptyMsg = document.querySelector('.inv-empty-msg');
+        let hasItems = false;
+
+        // Limpa slots primeiro
+        slots.forEach(slot => slot.innerHTML = '');
+
+        HOTBAR.forEach((item, index) => {
+            if (item && index < slots.length) {
+                hasItems = true;
+                const img = document.createElement('img');
+                img.src = item === 'SWORD' ? 'espada.png' : 'gun.png';
+                img.className = 'slot-img';
+                img.style.width = '70%';
+                slots[index].appendChild(img);
+            }
+        });
+
+        emptyMsg.style.display = hasItems ? 'none' : 'block';
+    }
 }
 
 // --- INTERAÇÃO ---
@@ -1090,9 +1113,12 @@ document.getElementById('start-button').addEventListener('click', () => {
                 transitionScreen.style.display = 'none';
                 document.getElementById('hud').style.display = 'flex';
                 gameStarted = true;
+                inventoryOpen = false;
+                shopOpen = false;
+                settingsOpen = false;
                 equipSlot(0);
                 if (sounds.ctx.state === 'suspended') sounds.ctx.resume();
-            }, 1000); // Espera o Fade-Out
+            }, 1000);
         }, 3000); // Tempo do GIF
     }, 500);
 });
@@ -1228,7 +1254,7 @@ window.addEventListener('keydown', (e) => {
 
 // --- MOVIMENTO WASD + Mira no Mouse ---
 function updateMovement() {
-    if (!gameStarted || inventoryOpen) return;
+    if (!gameStarted || inventoryOpen || shopOpen || settingsOpen) return;
 
     let mx = 0, my = 0;
     if (keys['KeyW']) my += 1;
