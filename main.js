@@ -1058,6 +1058,14 @@ document.getElementById('start-button').addEventListener('click', () => {
     const menu = document.getElementById('game-menu');
     const transitionScreen = document.getElementById('transition-screen');
 
+    // Habilita movimentação IMEDIATAMENTE ao clicar para evitar travamentos
+    gameStarted = true;
+    shopOpen = false;
+    settingsOpen = false;
+    isGameOver = false;
+    equipSlot(0);
+    window.focus();
+
     menu.style.opacity = '0';
     setTimeout(() => {
         menu.style.display = 'none';
@@ -1066,24 +1074,16 @@ document.getElementById('start-button').addEventListener('click', () => {
         transitionScreen.style.display = 'flex';
         setTimeout(() => { transitionScreen.style.opacity = '1'; }, 50);
 
-        // Duração da animação do GIF (ex: 3 segundos)
+        // Duração da animação do GIF
         setTimeout(() => {
             transitionScreen.style.opacity = '0';
             setTimeout(() => {
                 transitionScreen.style.display = 'none';
                 document.getElementById('hud').style.display = 'flex';
 
-                // Reset Total de Flags para destravar movimento
-                gameStarted = true;
-                shopOpen = false;
-                settingsOpen = false;
-                isGameOver = false;
-
-                equipSlot(0);
                 if (sounds && sounds.ctx && sounds.ctx.state === 'suspended') {
                     sounds.ctx.resume();
                 }
-                window.focus();
             }, 1000); // Espera o Fade-Out
         }, 3000); // Tempo do GIF
     }, 500);
