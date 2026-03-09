@@ -37,7 +37,6 @@ let divaCoins = 0;
 let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
 let isGameOver = false;
-let inventoryOpen = false;
 let shopOpen = false;
 let stylePoints = 0;
 let styleRank = 'D';
@@ -106,12 +105,8 @@ const keys = {};
 let lastDirectionKey = 'KeyS'; // Para rastrear a última pose horizontal
 window.addEventListener('keydown', (e) => {
     keys[e.code] = true;
-    if (e.code === 'KeyW' || e.code === 'KeyS') lastDirectionKey = e.code;
-
-    // Trigger Dash
-    if (e.code === 'ShiftLeft' || e.code === 'ShiftRight') {
-        startDash();
-    }
+    if (e.code === 'KeyW' || e.code === 'ArrowUp') lastDirectionKey = 'KeyW';
+    if (e.code === 'KeyS' || e.code === 'ArrowDown') lastDirectionKey = 'KeyS';
 });
 window.addEventListener('keyup', (e) => { keys[e.code] = false; });
 
@@ -981,15 +976,7 @@ function createSparks(pos, count = 8) {
 
 // --- DASH & GHOST EFFECT ---
 function startDash() {
-    if (!canDash || isDashing || !gameStarted) return;
-
-    canDash = false;
-    isDashing = true;
-    dashCooldown = DASH_COOLDOWN_MAX;
-
-    setTimeout(() => {
-        isDashing = false;
-    }, DASH_DURATION * 16); // Estimado pra frames
+    // Legacy support, continuous dash now runs in updateMovement
 }
 
 function spawnGhost() {
@@ -1064,34 +1051,7 @@ function resetGame() {
     document.getElementById('game-menu').style.opacity = '1';
 }
 
-// --- INVENTÁRIO ---
-function toggleInventory() {
-    inventoryOpen = !inventoryOpen;
-    const invEl = document.getElementById('inventory');
-    invEl.style.display = inventoryOpen ? 'flex' : 'none';
-
-    if (inventoryOpen) {
-        const slots = document.querySelectorAll('.inv-slot');
-        const emptyMsg = document.querySelector('.inv-empty-msg');
-        let hasItems = false;
-
-        // Limpa slots primeiro
-        slots.forEach(slot => slot.innerHTML = '');
-
-        HOTBAR.forEach((item, index) => {
-            if (item && index < slots.length) {
-                hasItems = true;
-                const img = document.createElement('img');
-                img.src = item === 'SWORD' ? 'espada.png' : 'gun.png';
-                img.className = 'slot-img';
-                img.style.width = '70%';
-                slots[index].appendChild(img);
-            }
-        });
-
-        emptyMsg.style.display = hasItems ? 'none' : 'block';
-    }
-}
+// --- ARMAS & MECÂNICAS ---
 
 // --- INTERAÇÃO ---
 document.getElementById('start-button').addEventListener('click', () => {
@@ -1112,13 +1072,19 @@ document.getElementById('start-button').addEventListener('click', () => {
             setTimeout(() => {
                 transitionScreen.style.display = 'none';
                 document.getElementById('hud').style.display = 'flex';
+
+                // Reset Total de Flags para destravar movimento
                 gameStarted = true;
-                inventoryOpen = false;
                 shopOpen = false;
                 settingsOpen = false;
+                isGameOver = false;
+
                 equipSlot(0);
-                if (sounds.ctx.state === 'suspended') sounds.ctx.resume();
-            }, 1000);
+                if (sounds && sounds.ctx && sounds.ctx.state === 'suspended') {
+                    sounds.ctx.resume();
+                }
+                window.focus();
+            }, 1000); // Espera o Fade-Out
         }, 3000); // Tempo do GIF
     }, 500);
 });
@@ -1217,13 +1183,13 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mousedown', (e) => {
-    if (!gameStarted || inventoryOpen) return;
+    if (!gameStarted) return;
     if (e.target.closest('#game-menu') || e.target.closest('#game-over')) return;
     shoot();
 });
 
 window.addEventListener('wheel', (e) => {
-    if (!gameStarted || inventoryOpen) return;
+    if (!gameStarted) return;
     if (e.deltaY > 0) {
         equipSlot((currentWeaponIndex + 1) % 6);
     } else {
@@ -1232,17 +1198,12 @@ window.addEventListener('wheel', (e) => {
 });
 
 window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && gameStarted && !inventoryOpen) {
+    if (e.code === 'Escape' && gameStarted) {
         document.getElementById('game-menu').style.display = 'flex';
         document.getElementById('game-menu').style.opacity = '1';
         document.getElementById('hud').style.display = 'none';
         gameStarted = false;
         shopOpen = false;
-        inventoryOpen = false;
-    }
-    if ((e.code === 'KeyI' || e.code === 'Tab') && gameStarted && !shopOpen) {
-        e.preventDefault();
-        toggleInventory();
     }
 
     // Suporte aos numerais 1 a 6 do teclado para Seleção de Itens da Hotbar
@@ -1254,13 +1215,13 @@ window.addEventListener('keydown', (e) => {
 
 // --- MOVIMENTO WASD + Mira no Mouse ---
 function updateMovement() {
-    if (!gameStarted || inventoryOpen || shopOpen || settingsOpen) return;
+    if (!gameStarted || shopOpen || settingsOpen) return;
 
     let mx = 0, my = 0;
-    if (keys['KeyW']) my += 1;
-    if (keys['KeyS']) my -= 1;
-    if (keys['KeyA']) mx -= 1;
-    if (keys['KeyD']) mx += 1;
+    if (keys['KeyW'] || keys['ArrowUp']) my += 1;
+    if (keys['KeyS'] || keys['ArrowDown']) my -= 1;
+    if (keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+    if (keys['KeyD'] || keys['ArrowRight']) mx += 1;
 
     let nextX = playerGroup.position.x;
     let nextY = playerGroup.position.y;
