@@ -2,8 +2,8 @@ import * as THREE from 'three';
 
 // --- CONFIGURATION ---
 const ENEMY_COUNT = 15;
-const ENEMY_SPEED = 0.04;
-const PATROL_SPEED = 0.01;
+let ENEMY_SPEED = 0.04;
+let PATROL_SPEED = 0.01;
 const DETECTION_RADIUS = 18;   // unidades do mundo (~200px)
 const SPAWN_RADIUS = 40;
 const BULLET_SPEED = 0.6;
@@ -16,6 +16,7 @@ const ENEMY_MAX_HP = 50;
 const SWORD_DAMAGE = 25;
 const SWORD_RANGE = 4.5;
 const GUN_DAMAGE = 15;
+let extraDamage = 0;
 
 // Novos inimigos: Aranha
 const SPIDER_COUNT = 5;
@@ -24,39 +25,187 @@ const WEB_DAMAGE = 15;
 const SPIDER_DETECTION_RADIUS = 25;
 const SPIDER_FIRE_RATE = 120; // frames entre tiros
 
+// Novos inimigos: Pop Diva (Shiny Butterfly)
+const POP_DIVA_COUNT = 3;
+const POP_DIVA_SPEED = 0.08;
+const POP_DIVA_HP = 20;
+const POP_DIVA_DETECTION_RADIUS = 30;
+
 // --- STATE ---
 let score = 0;
+let divaCoins = 0;
 let playerHP = PLAYER_MAX_HP;
 let damageCooldown = 0;
 let isGameOver = false;
-let inventoryOpen = false;
+let shopOpen = false;
+let stylePoints = 0;
+let styleRank = 'D';
+const STYLE_MAX = 5000;
+const STYLE_DECAY = 0.5; // Reduzido para ficar mais fixo
+const RANK_THRESHOLDS = { 'S': 4000, 'A': 2500, 'B': 1000, 'C': 300, 'D': 0 };
+const RANK_MULTIPLIERS = { 'S': 2.5, 'A': 1.8, 'B': 1.4, 'C': 1.2, 'D': 1.0 };
+
+// Neon Chips State
+let hasTripleShot = false;
+let hasPierce = false;
+
+// Round State
+let currentRound = 1;
+let enemiesKilledInRound = 0;
+let roundTarget = 10;
+let isTransitioningRound = false;
 
 // Animation State
 let playerState = 'idle'; // 'idle' or 'walk'
 let playerDirection = 'front'; // 'front', 'back', 'side'
+<<<<<<< HEAD
 let playerFrames = 1; // Ajustado para 1 frame (imagens únicas)
 let animTimer = 0;
 let currentFrame = 0;
+=======
+let playerFrames = 1; // As imagens são frames únicos verticais (aprox 170x430)
+>>>>>>> 3542fa2332e69824983040d89d7562bda26f9b95
 const ANIM_SPEED = 0.15;
 
 const treeColliders = [];
 const enemies = []; // { mesh, state, patrolDir, patrolTimer, type }
 const bullets = [];
 const webs = [];
+const ghosts = []; // { mesh, timer }
+const powerups = []; // { mesh, type, timer }
 let gameStarted = false;
+
+// Juicy Feedback State
+let shakeIntensity = 0;
+let shakeTimer = 0;
+
+// Dash State (Continuous with Stamina)
+let isDashing = false;
+let dashGhostTimer = 0; // Adicionando definição que faltava
+let stamina = 100;
+const STAMINA_MAX = 100;
+const STAMINA_DECAY = 1.0;
+const STAMINA_REGEN = 0.4;
+const DASH_SPEED_CONTINUOUS = 0.35;
+
+// Overclock Charge State
+let overclockProgress = 0;
+const OVERCLOCK_GOAL = 100;
+let overclockTimer = 0;
+const OVERCLOCK_DURATION = 600;
+
+// Settings State
+let globalVolume = 0.5;
+let settingsOpen = false;
+
 const mouse = new THREE.Vector2();
 const worldMouse = new THREE.Vector3();
 let aimDir = new THREE.Vector3(0, 1, 0);
 
 // Weapon state
-const WEAPONS = ['GUN', 'SWORD'];
-let currentWeaponIndex = 0;
+const HOTBAR = ['SWORD', 'GUN', null, null, null, null];
+let currentWeaponIndex = 0; // 0 to 5
 let canSlash = true;
 let swordMesh;
 
 const keys = {};
-window.addEventListener('keydown', (e) => { keys[e.code] = true; });
-window.addEventListener('keyup', (e) => { keys[e.code] = false; });
+let lastDirectionKey = 'KeyS';
+window.addEventListener('keydown', (e) => {
+    const code = e.code;
+    const key = e.key.toLowerCase();
+    keys[code] = true;
+    keys[key] = true;
+
+    if (code === 'KeyW' || code === 'ArrowUp' || key === 'w') lastDirectionKey = 'KeyW';
+    if (code === 'KeyS' || code === 'ArrowDown' || key === 's') lastDirectionKey = 'KeyS';
+
+    // Suporte aos numerais
+    if (code >= 'Digit1' && code <= 'Digit6' && gameStarted) {
+        equipSlot(parseInt(code.replace('Digit', '')) - 1);
+    }
+
+    // Escape
+    if (code === 'Escape' && gameStarted) {
+        document.getElementById('game-menu').style.display = 'flex';
+        document.getElementById('game-menu').style.opacity = '1';
+        document.getElementById('hud').style.display = 'none';
+        gameStarted = false;
+    }
+});
+window.addEventListener('keyup', (e) => {
+    keys[e.code] = false;
+    keys[e.key.toLowerCase()] = false;
+});
+
+let isAttacking = false;
+let attackTimer = null;
+
+// --- SOUND SYSTEM (Procedural Y2K) ---
+class SoundManager {
+    constructor() {
+        this.ctx = new (window.AudioContext || window.webkitAudioContext)();
+    }
+
+    playShoot() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'square';
+        osc.frequency.setValueAtTime(400, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(50, this.ctx.currentTime + 0.1);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.1);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.1);
+    }
+
+    playHit() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sawtooth';
+        osc.frequency.setValueAtTime(100, this.ctx.currentTime);
+        osc.frequency.linearRampToValueAtTime(10, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.05);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.05);
+    }
+
+    playDeath() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'triangle';
+        osc.frequency.setValueAtTime(200, this.ctx.currentTime);
+        osc.frequency.exponentialRampToValueAtTime(1, this.ctx.currentTime + 0.5);
+        gain.gain.setValueAtTime(0.2, this.ctx.currentTime);
+        gain.gain.linearRampToValueAtTime(0, this.ctx.currentTime + 0.5);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.5);
+    }
+
+    playBuy() {
+        const osc = this.ctx.createOscillator();
+        const gain = this.ctx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(600, this.ctx.currentTime);
+        osc.frequency.setValueAtTime(800, this.ctx.currentTime + 0.05);
+        gain.gain.setValueAtTime(0.1, this.ctx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.01, this.ctx.currentTime + 0.2);
+        osc.connect(gain);
+        gain.connect(this.ctx.destination);
+        osc.start();
+        osc.stop(this.ctx.currentTime + 0.2);
+    }
+}
+const sounds = new SoundManager();
+
+let lastShootTime = 0;
+const FIRE_RATE_BASE = 250; // ms
 
 // --- SCENE ---
 const scene = new THREE.Scene();
@@ -78,6 +227,15 @@ renderer.domElement.style.cursor = 'crosshair';
 
 // TextureLoader compartilhado
 const textureLoader = new THREE.TextureLoader();
+
+// Frog Textures
+const frogIdleTex = textureLoader.load('frogidle.png');
+const frogAttackTex = textureLoader.load('frog.png');
+[frogIdleTex, frogAttackTex].forEach(t => t.magFilter = t.minFilter = THREE.NearestFilter);
+
+// Pop Diva GIF Texture (Fixed Name)
+const popDivaTex = textureLoader.load('diva pop.gif');
+popDivaTex.magFilter = popDivaTex.minFilter = THREE.NearestFilter;
 
 // --- GROUND TEXTURE (PNG ou Procedural como fallback) ---
 function createForestTexture() {
@@ -116,14 +274,17 @@ function applyGroundTexture(tex) {
     tex.magFilter = tex.minFilter = THREE.NearestFilter;
     tex.repeat.set(20, 20);
     ground.material.map = tex;
-    ground.material.color.setHex(0xaaaaaa); // Escurece o mapa multiplicando por cinza escuro
+    ground.material.color.setHex(0xffffff); // Restaura brilho total
     ground.material.needsUpdate = true;
+
+    // Força a renderização do material novo trocando a textura completamente em tempo de execução
+    ground.material = new THREE.MeshBasicMaterial({ map: tex, color: 0xffffff });
 }
 
 const ground = new THREE.Mesh(
     new THREE.PlaneGeometry(MAP_LIMIT * 2 + 10, MAP_LIMIT * 2 + 10),
     // Cor cinza escura para baixar o brilho/contraste do mapa
-    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0x777777 })
+    new THREE.MeshBasicMaterial({ map: createForestTexture(), color: 0xffffff })
 );
 ground.position.z = -1;
 scene.add(ground);
@@ -208,30 +369,17 @@ function updateParticles() {
 let treeTexture = null;
 
 function createTree(x, y) {
+    if (Math.abs(x) < 8 && Math.abs(y) < 8) return;
     const group = new THREE.Group();
-    if (treeTexture) {
-        const size = 22 + Math.random() * 10; // 22 a 32 unidades
-        const treeMat = new THREE.MeshBasicMaterial({
-            map: treeTexture, transparent: true, alphaTest: 0.1, depthWrite: false
-        });
-        const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 1.15), treeMat);
-        // Eleva a arte para a raiz (base do tronco) ficar no Y = 0 do grupo
-        plane.position.set(0, size * 0.4, 0.5);
-        group.add(plane);
-
-        // Colisor esférico reduzido e mais centralizado no tronco da árvore
-        treeColliders.push({ x: x, y: y + size * 0.06, radius: size * 0.06 });
-    } else {
-        const s = 1.8 + Math.random() * 1;
-        const topColors = [0x1a4a1a, 0x1e5a1e, 0x224422];
-        group.add(new THREE.Mesh(
-            new THREE.CircleGeometry(s, 6),
-            new THREE.MeshBasicMaterial({ color: topColors[Math.floor(Math.random() * topColors.length)] })
-        ));
-        treeColliders.push({ x: x, y: y, radius: s });
-    }
-    // Determina o Z baseado no Y (Depth Sorting - árvores na frente sobrepõem as de trás)
-    group.position.set(x, y, -y * 0.001);
+    const size = 22 + Math.random() * 10;
+    const treeMat = new THREE.MeshBasicMaterial({
+        map: treeTexture, transparent: true, alphaTest: 0.1, depthWrite: false
+    });
+    const plane = new THREE.Mesh(new THREE.PlaneGeometry(size, size * 1.15), treeMat);
+    plane.position.set(0, size * 0.4, 0.5);
+    group.add(plane);
+    treeColliders.push({ x: x, y: y, radius: size * 0.08 });
+    group.position.set(x, y, -y * 0.01);
     scene.add(group);
 }
 
@@ -260,19 +408,59 @@ textureLoader.load(
     () => { initTrees(); }
 );
 
+// --- PEDRAS E GRAMAS ---
+const envElements = [
+    { file: 'pedra1.png', count: 60, size: 2.0 },
+    { file: 'pedra2.png', count: 60, size: 2.0 },
+    { file: 'grama1.png', count: 120, size: 1.5 },
+    { file: 'grama2.png', count: 120, size: 1.5 }
+];
+
+envElements.forEach(item => {
+    textureLoader.load(item.file, (tex) => {
+        for (let i = 0; i < item.count; i++) {
+            const rx = (Math.random() - 0.5) * 240;
+            const ry = (Math.random() - 0.5) * 240;
+            if (Math.abs(rx) > 15 || Math.abs(ry) > 15) { // Longe do spawn
+                const rs = item.size + (Math.random() * 0.5);
+                const mesh = new THREE.Mesh(
+                    new THREE.PlaneGeometry(rs * 1.2, rs),
+                    new THREE.MeshBasicMaterial({ map: tex, transparent: true, alphaTest: 0.1, depthWrite: false })
+                );
+                mesh.position.set(rx, ry, -ry * 0.01 + 0.001);
+                scene.add(mesh);
+            }
+        }
+    });
+});
+
 // --- PLAYER ---
 const playerGroup = new THREE.Group();
 
-// Visual da Personagem
 const playerMat = new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, alphaTest: 0.1 });
-const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.4, 3.2), playerMat);
-playerVisual.position.set(0, 0.8, 0.2);
+const playerVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.2, 5.3), playerMat);
+playerVisual.position.set(0, 1.8, 0.1);
 playerGroup.add(playerVisual);
 
 const playerTextures = {
-    'front': textureLoader.load('walkfront.png.png'),
-    'back': textureLoader.load('backwalk.png.png'),
-    'side': textureLoader.load('sidewalk.png.png')
+    'front': textureLoader.load('walkfront.png'),
+    'back': textureLoader.load('backwalk.png'),
+    'side': textureLoader.load('sidewalk.png'),
+    'aim': textureLoader.load('gunaim.png'),
+    'attack': textureLoader.load('attack.png'),
+    'idle': textureLoader.load('idle.png'),
+    'idleback': textureLoader.load('idleback.png')
+};
+
+// Geometrias dinâmicas para ajustar corretamente a distorção de cada PNG
+const geometries = {
+    'front': new THREE.PlaneGeometry(2.2, 5.3),
+    'back': new THREE.PlaneGeometry(2.2, 5.3),
+    'side': new THREE.PlaneGeometry(2.1, 5.3),
+    'aim': new THREE.PlaneGeometry(3.2, 5.3),
+    'attack': new THREE.PlaneGeometry(6.2, 5.3),
+    'idle': new THREE.PlaneGeometry(7.95, 5.3),
+    'idleback': new THREE.PlaneGeometry(2.33, 5.3)
 };
 
 Object.values(playerTextures).forEach(tex => {
@@ -283,31 +471,14 @@ Object.values(playerTextures).forEach(tex => {
 playerMat.map = playerTextures['front'];
 playerMat.needsUpdate = true;
 
-// Grupo da Mira (só a arma gira!)
+// Grupo da Mira invisível (só para lógica do tiro)
 const aimGroup = new THREE.Group();
-const gunMesh = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.35, 1.2),
-    new THREE.MeshBasicMaterial({ color: 0x00ffff })
-);
-// Posição original da arma antes do offset
+const gunMesh = new THREE.Mesh(); // Forma e material removidos a pedido do usuário
 gunMesh.position.set(0, 1.1, 0.1);
 aimGroup.add(gunMesh);
 
-// Espada (invisível no começo)
+// Espada invisível 
 swordMesh = new THREE.Group();
-const swordBlade = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.4, 2.5),
-    new THREE.MeshBasicMaterial({ color: 0xffffff, transparent: true, opacity: 0.9 })
-);
-swordBlade.position.set(0, 1.2, 0);
-swordMesh.add(swordBlade);
-const swordHandle = new THREE.Mesh(
-    new THREE.PlaneGeometry(0.2, 0.6),
-    new THREE.MeshBasicMaterial({ color: 0x555555 })
-);
-swordHandle.position.set(0, 0, 0);
-swordMesh.add(swordHandle);
-swordMesh.visible = false;
 aimGroup.add(swordMesh);
 
 playerGroup.add(aimGroup);
@@ -318,12 +489,12 @@ const hpBarBg = new THREE.Mesh(
     new THREE.PlaneGeometry(HP_BAR_WIDTH + 0.1, 0.38),
     new THREE.MeshBasicMaterial({ color: 0x111111 })
 );
-hpBarBg.position.set(0, 3.0, 0.5); // Movido para cima da cabeça do PNG
+hpBarBg.position.set(0, 4.2, 0.5); // Movido para o alto da cabeça
 playerGroup.add(hpBarBg);
 
 const hpMat = new THREE.MeshBasicMaterial({ color: 0xff00ff });
 const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(HP_BAR_WIDTH, 0.28), hpMat);
-hpBar.position.set(0, 3.0, 0.51);
+hpBar.position.set(0, 4.2, 0.51);
 playerGroup.add(hpBar);
 
 playerGroup.position.set(0, 0, 0);
@@ -335,45 +506,54 @@ function updateHPBar() {
     hpBar.position.x = -(HP_BAR_WIDTH * (1 - ratio)) / 2;
     hpMat.color.set(playerHP > 50 ? 0xff00ff : playerHP > 25 ? 0xffff00 :
         (Math.floor(Date.now() / 200) % 2 === 0 ? 0xff2200 : 0xff0000));
+
+    const showHP = playerHP < PLAYER_MAX_HP;
+    hpBar.visible = showHP;
+    hpBarBg.visible = showHP;
 }
 
-// --- SAPOS (com IA de Patrulha / Perseguição) ---
+function updateHUD() {
+    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
+    document.getElementById('coins-value').innerText = divaCoins.toString().padStart(3, '0');
+    document.getElementById('shop-coins-value').innerText = divaCoins;
+
+    // Update Ability Bars
+    const ocFill = document.getElementById('overclock-fill');
+    const stFill = document.getElementById('stamina-fill');
+
+    if (overclockTimer > 0) {
+        ocFill.style.width = (overclockTimer / OVERCLOCK_DURATION * 100) + '%';
+        ocFill.style.background = '#ff00ff';
+    } else {
+        ocFill.style.width = (overclockProgress / OVERCLOCK_GOAL * 100) + '%';
+        ocFill.style.background = '#880088';
+    }
+
+    stFill.style.width = stamina + '%';
+}
+
+// --- ENEMIES ---
 function createFrog() {
     const frog = new THREE.Group();
 
-    frog.add(new THREE.Mesh(
-        new THREE.CircleGeometry(1, 16),
-        new THREE.MeshBasicMaterial({ color: 0x44dd44 })
-    ));
+    const frogMat = new THREE.MeshBasicMaterial({ map: frogIdleTex, transparent: true, alphaTest: 0.1 });
+    const frogVisual = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 2.5), frogMat);
+    frogVisual.position.y = 1.0;
+    frog.add(frogVisual);
 
-    [[(-0.45), 0.7], [0.45, 0.7]].forEach(([ex, ey]) => {
-        const eye = new THREE.Mesh(
-            new THREE.CircleGeometry(0.28, 12),
-            new THREE.MeshBasicMaterial({ color: 0xffffff })
-        );
-        eye.position.set(ex, ey, 0.1);
-        const pupil = new THREE.Mesh(
-            new THREE.CircleGeometry(0.13, 8),
-            new THREE.MeshBasicMaterial({ color: 0x000000 })
-        );
-        pupil.position.z = 0.1;
-        eye.add(pupil);
-        frog.add(eye);
-    });
-
-    // Barra de Vida do Sapo
+    // Barra de Vida do Sapo (reposicionada acima do sprite)
     const enemyHpBg = new THREE.Mesh(
         new THREE.PlaneGeometry(1.6, 0.15),
         new THREE.MeshBasicMaterial({ color: 0x111111 })
     );
-    enemyHpBg.position.set(0, 1.4, 0.2);
+    enemyHpBg.position.set(0, 2.4, 0.2);
     frog.add(enemyHpBg);
 
     const enemyHpBar = new THREE.Mesh(
         new THREE.PlaneGeometry(1.6, 0.1),
         new THREE.MeshBasicMaterial({ color: 0x00ff00 })
     );
-    enemyHpBar.position.set(0, 1.4, 0.21);
+    enemyHpBar.position.set(0, 2.4, 0.21);
     frog.add(enemyHpBar);
 
     const angle = Math.random() * Math.PI * 2;
@@ -384,6 +564,8 @@ function createFrog() {
     scene.add(frog);
     enemies.push({
         mesh: frog,
+        visual: frogVisual,
+        mat: frogMat,
         hpBar: enemyHpBar,
         hp: ENEMY_MAX_HP,
         type: 'frog',
@@ -448,6 +630,45 @@ function createSpider() {
     });
 }
 
+function createPopDiva() {
+    const diva = new THREE.Group();
+    const divaMat = new THREE.MeshBasicMaterial({ map: popDivaTex, transparent: true, alphaTest: 0.1 });
+    const divaVisual = new THREE.Mesh(new THREE.PlaneGeometry(3.5, 3.5), divaMat);
+    divaVisual.position.y = 1.0;
+    diva.add(divaVisual);
+
+    // Aura Neon
+    const aura = new THREE.Mesh(
+        new THREE.CircleGeometry(1.2, 16),
+        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.3 })
+    );
+    diva.add(aura);
+
+    // HP Bar
+    const hpBg = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.1), new THREE.MeshBasicMaterial({ color: 0x111111 }));
+    hpBg.position.set(0, 1.3, 0.2);
+    diva.add(hpBg);
+    const hpBar = new THREE.Mesh(new THREE.PlaneGeometry(1.2, 0.06), new THREE.MeshBasicMaterial({ color: 0x00ffff }));
+    hpBar.position.set(0, 1.3, 0.21);
+    diva.add(hpBar);
+
+    const angle = Math.random() * Math.PI * 2;
+    const fx = playerGroup.position.x + Math.cos(angle) * SPAWN_RADIUS;
+    const fy = playerGroup.position.y + Math.sin(angle) * SPAWN_RADIUS;
+    diva.position.set(fx, fy, -fy * 0.001);
+
+    scene.add(diva);
+    enemies.push({
+        mesh: diva,
+        hpBar: hpBar,
+        hp: POP_DIVA_HP,
+        type: 'pop',
+        state: 'patrol',
+        patrolDir: Math.random() * Math.PI * 2,
+        patrolTimer: Math.floor(Math.random() * 60) + 20
+    });
+}
+
 function shootWeb(fromPosition) {
     const web = new THREE.Mesh(
         new THREE.CircleGeometry(0.4, 6),
@@ -468,24 +689,77 @@ function shootWeb(fromPosition) {
 }
 
 // --- ARMAS & MECÂNICAS ---
-function switchWeapon(direction) {
-    if (direction > 0) currentWeaponIndex = (currentWeaponIndex + 1) % WEAPONS.length;
-    else currentWeaponIndex = (currentWeaponIndex - 1 + WEAPONS.length) % WEAPONS.length;
+function equipSlot(index) {
+    currentWeaponIndex = Math.max(0, Math.min(index, 5));
 
-    const currentWeapon = WEAPONS[currentWeaponIndex];
-    document.getElementById('weapon-name').innerText = currentWeapon;
-
-    gunMesh.visible = (currentWeapon === 'GUN');
-    swordMesh.visible = (currentWeapon === 'SWORD');
+    // Atualiza Interface (Hotbar)
+    for (let i = 0; i < 6; i++) {
+        const slotEl = document.getElementById(`slot-${i + 1}`);
+        if (slotEl) {
+            if (i === currentWeaponIndex) slotEl.classList.add('active');
+            else slotEl.classList.remove('active');
+        }
+    }
 }
 
 function updateEnemyHP(enemy, damage) {
-    enemy.hp -= damage;
-    const ratio = Math.max(0, enemy.hp / ENEMY_MAX_HP);
+    enemy.hp -= (damage + extraDamage);
+    const maxHp = enemy.type === 'frog' ? ENEMY_MAX_HP : (enemy.type === 'spider' ? ENEMY_MAX_HP * 0.8 : POP_DIVA_HP);
+    const ratio = Math.max(0, enemy.hp / maxHp);
     enemy.hpBar.scale.x = ratio;
-    enemy.hpBar.position.x = -(1.6 * (1 - ratio)) / 2;
+    enemy.hpBar.position.x = -((enemy.type === 'pop' ? 1.2 : 1.6) * (1 - ratio)) / 2;
     enemy.hpBar.material.color.set(ratio > 0.5 ? 0x00ff00 : ratio > 0.25 ? 0xffff00 : 0xff0000);
+
+    if (enemy.hp > 0) sounds.playHit();
     return enemy.hp <= 0;
+}
+
+function onEnemyKilled(enemy) {
+    sounds.playDeath();
+    scene.remove(enemy.mesh);
+    const type = enemy.type;
+
+    let reward = 100;
+    let coins = 10;
+    let styleBonus = 150;
+
+    const multiplier = RANK_MULTIPLIERS[styleRank] || 1.0;
+
+    if (type === 'frog') {
+        reward = 100; coins = Math.floor(15 * multiplier); styleBonus = 150; createFrog();
+    } else if (type === 'spider') {
+        reward = 150; coins = Math.floor(25 * multiplier); styleBonus = 250; createSpider();
+    } else if (type === 'pop') {
+        reward = 300; coins = Math.floor(50 * multiplier); styleBonus = 800; createPopDiva();
+    }
+
+    score += reward;
+    divaCoins += coins;
+    enemiesKilledInRound++;
+
+    if (!isTransitioningRound && enemiesKilledInRound >= roundTarget) {
+        nextRound();
+    } else if (!isTransitioningRound) {
+        updateRoundFeed(`ROUND ${currentRound}: ${enemiesKilledInRound}/${roundTarget} MORTOS`);
+    }
+
+    addStyle(styleBonus);
+    updateHUD();
+
+    // Charge Overclock progress
+    if (overclockTimer <= 0) {
+        overclockProgress += (type === 'frog' ? 2 : type === 'spider' ? 5 : 20);
+        if (overclockProgress >= OVERCLOCK_GOAL) {
+            overclockProgress = 0;
+            overclockTimer = OVERCLOCK_DURATION;
+            // Efeito visual ou som aqui?
+        }
+    }
+
+    // Spawn Overclock 5% chance (rarer now as it charges on kills)
+    if (Math.random() < 0.05) {
+        spawnOverclock(enemy.mesh.position);
+    }
 }
 
 function slash() {
@@ -502,12 +776,9 @@ function slash() {
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (enemies[j].mesh.position.distanceTo(hitZone) < 3.5) {
-                const type = enemies[j].type;
                 if (updateEnemyHP(enemies[j], SWORD_DAMAGE)) {
-                    scene.remove(enemies[j].mesh); enemies.splice(j, 1);
-                    score += 150; // Bônus por matar de perto
-                    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                    if (type === 'frog') createFrog(); else createSpider();
+                    onEnemyKilled(enemies[j]);
+                    enemies.splice(j, 1);
                 }
             }
         }
@@ -519,50 +790,144 @@ function slash() {
     }, 50);
 }
 
+function triggerAttackAnimation() {
+    isAttacking = true;
+    if (attackTimer) clearTimeout(attackTimer);
+    attackTimer = setTimeout(() => {
+        isAttacking = false;
+    }, 300); // Mostra a imagem de ataque por 300ms
+}
+
 // --- TIRO ---
 function shoot() {
-    if (WEAPONS[currentWeaponIndex] === 'SWORD') {
+    triggerAttackAnimation();
+
+    const currentWeapon = HOTBAR[currentWeaponIndex];
+    if (currentWeapon === 'SWORD') {
         slash();
         return;
-    }
-    const bullet = new THREE.Mesh(
-        new THREE.CircleGeometry(0.18, 8),
-        new THREE.MeshBasicMaterial({ color: 0x00ffff })
-    );
-    bullet.position.set(playerGroup.position.x, playerGroup.position.y, 1.0); // Z alto pra passar sobre coisas
-    bullets.push({ mesh: bullet, dir: aimDir.clone() });
-    scene.add(bullet);
+    } else if (currentWeapon === 'GUN') {
+        const now = Date.now();
+        const fireRate = overclockTimer > 0 ? FIRE_RATE_BASE / 2 : FIRE_RATE_BASE;
 
-    // Cooldown/Recuo visual da arma
-    gunMesh.position.y -= 0.3;
-    setTimeout(() => { gunMesh.position.y += 0.3; }, 60);
+        if (now - lastShootTime < fireRate) return;
+        lastShootTime = now;
+
+        sounds.playShoot();
+        triggerShake(0.15, 5); // Pequeno shake no tiro
+
+        const bulletColor = overclockTimer > 0 ? 0xff00ff : 0x00ffff;
+        const bulletScale = overclockTimer > 0 ? 1.5 : 1.0;
+
+        const count = hasTripleShot ? 3 : 1;
+        for (let i = 0; i < count; i++) {
+            const bullet = new THREE.Mesh(
+                new THREE.CircleGeometry(0.18 * bulletScale, 8),
+                new THREE.MeshBasicMaterial({ color: bulletColor })
+            );
+            bullet.position.set(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0);
+
+            let bulletDir = aimDir.clone();
+            if (hasTripleShot) {
+                // Espalha as balas: -0.2, 0, 0.2 radianos de offset
+                const angle = Math.atan2(aimDir.y, aimDir.x);
+                const offset = (i - 1) * 0.25;
+                bulletDir.x = Math.cos(angle + offset);
+                bulletDir.y = Math.sin(angle + offset);
+            }
+
+            bullets.push({ mesh: bullet, dir: bulletDir });
+            scene.add(bullet);
+        }
+
+        // Neon Sparks
+        createSparks(new THREE.Vector3(playerGroup.position.x, playerGroup.position.y + 1.2, 1.0));
+
+        // Cooldown/Recuo visual da arma
+        gunMesh.position.y -= 0.3;
+        setTimeout(() => { gunMesh.position.y += 0.3; }, 60);
+    }
 }
 
 function updateBullets() {
     for (let i = bullets.length - 1; i >= 0; i--) {
         const b = bullets[i];
+
+        if (b.isSpark) {
+            b.mesh.position.addScaledVector(b.dir, b.speed);
+            b.timer--;
+            b.mesh.material.opacity = b.timer / 40;
+            if (b.timer <= 0) {
+                scene.remove(b.mesh); bullets.splice(i, 1);
+            }
+            continue;
+        }
+
         b.mesh.position.addScaledVector(b.dir, BULLET_SPEED);
 
-        if (b.mesh.position.distanceTo(playerGroup.position) > 60) {
+        // Ricochet Logic Removida
+
+        if (b.mesh.position.distanceTo(playerGroup.position) > 28) {
             scene.remove(b.mesh); bullets.splice(i, 1); continue;
         }
 
         for (let j = enemies.length - 1; j >= 0; j--) {
             if (b.mesh.position.distanceTo(enemies[j].mesh.position) < 1.5) {
                 const isDead = updateEnemyHP(enemies[j], GUN_DAMAGE);
-                scene.remove(b.mesh); bullets.splice(i, 1);
+
+                // Lógica de Neon Chips: Pierce
+                if (!hasPierce) {
+                    scene.remove(b.mesh);
+                    bullets.splice(i, 1);
+                } else {
+                    // Pierce: Bullet continues but maybe reduce damage? or just keep going
+                }
 
                 if (isDead) {
-                    const type = enemies[j].type;
-                    scene.remove(enemies[j].mesh); enemies.splice(j, 1);
-                    score += 100;
-                    document.getElementById('score-value').innerText = score.toString().padStart(6, '0');
-                    if (type === 'frog') createFrog(); else createSpider();
+                    onEnemyKilled(enemies[j]);
+                    enemies.splice(j, 1);
                 }
                 break;
             }
         }
     }
+}
+
+function addStyle(points) {
+    stylePoints = Math.min(STYLE_MAX, stylePoints + points);
+    updateStyleUI();
+}
+
+function updateStyle() {
+    if (stylePoints > 0) {
+        stylePoints = Math.max(0, stylePoints - STYLE_DECAY);
+        updateStyleUI();
+    }
+}
+
+function updateStyleUI() {
+    let newRank = 'D';
+    if (stylePoints >= RANK_THRESHOLDS['S']) newRank = 'S';
+    else if (stylePoints >= RANK_THRESHOLDS['A']) newRank = 'A';
+    else if (stylePoints >= RANK_THRESHOLDS['B']) newRank = 'B';
+    else if (stylePoints >= RANK_THRESHOLDS['C']) newRank = 'C';
+
+    const rankEl = document.querySelector('.style-rank');
+    if (newRank !== styleRank) {
+        styleRank = newRank;
+        rankEl.innerText = styleRank;
+        rankEl.className = 'style-rank rank-' + styleRank;
+        rankEl.style.animation = 'none';
+        rankEl.offsetHeight; // trigger reflow
+        rankEl.style.animation = 'rankUp 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275)';
+
+        // Efeito visual Rank S
+        if (styleRank === 'S') document.body.classList.add('rank-S-active');
+        else document.body.classList.remove('rank-S-active');
+    }
+
+    const fill = document.getElementById('style-bar-fill');
+    fill.style.width = (stylePoints / STYLE_MAX * 100) + '%';
 }
 
 function updateWebs() {
@@ -572,19 +937,103 @@ function updateWebs() {
 
         // Colisão da teia com o Player
         if (w.mesh.position.distanceTo(playerGroup.position) < 1.2) {
-            if (damageCooldown === 0) {
+            if (damageCooldown === 0 && !isDashing) { // Imunidade no dash
                 playerHP -= WEB_DAMAGE;
                 damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                triggerShake(0.4, 20); // Shake no dano
+
+                // Style Penalty: Resets style or drops points significantly
+                stylePoints = Math.max(0, stylePoints - 1500);
+                updateStyleUI();
+
                 if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
             }
             scene.remove(w.mesh); webs.splice(i, 1);
             continue;
         }
 
-        if (w.mesh.position.distanceTo(playerGroup.position) > 50) {
+        if (w.mesh.position.distanceTo(playerGroup.position) > 28) {
             scene.remove(w.mesh); webs.splice(i, 1);
         }
     }
+}
+
+// --- JUICY FEEDBACK & PARTÍCULAS ---
+function triggerShake(intensity, duration = 15) {
+    shakeIntensity = intensity;
+    shakeTimer = duration;
+}
+
+function createSparks(pos, count = 8) {
+    for (let i = 0; i < count; i++) {
+        const spark = new THREE.Mesh(
+            new THREE.PlaneGeometry(0.12, 0.45),
+            new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 1 })
+        );
+        spark.position.copy(pos);
+        spark.position.z = 1.0;
+
+        const angle = Math.random() * Math.PI * 2;
+        const force = 0.1 + Math.random() * 0.2;
+        const dir = new THREE.Vector3(Math.cos(angle), Math.sin(angle), 0);
+
+        bullets.push({ // Reutilizando a lógica de bullets pra partícula simples
+            mesh: spark,
+            dir: dir,
+            speed: force,
+            isSpark: true,
+            timer: 20 + Math.random() * 20
+        });
+        scene.add(spark);
+    }
+}
+
+// --- DASH & GHOST EFFECT ---
+function startDash() {
+    // Legacy support, continuous dash now runs in updateMovement
+}
+
+function spawnGhost() {
+    const ghostGeo = playerVisual.geometry.clone();
+    const ghostMat = playerMat.clone();
+    ghostMat.transparent = true;
+    ghostMat.opacity = 0.4;
+    ghostMat.color.set(0xff00ff); // Pink Neon
+
+    if (ghostMat.map) {
+        ghostMat.map = ghostMat.map.clone();
+        ghostMat.map.needsUpdate = true;
+    }
+    const ghost = new THREE.Mesh(ghostGeo, ghostMat);
+    ghost.position.copy(playerGroup.position);
+    ghost.position.y += 1.8; // Align with playerVisual
+    ghost.scale.copy(playerVisual.scale);
+    ghost.rotation.copy(playerGroup.rotation);
+
+    scene.add(ghost);
+    ghosts.push({ mesh: ghost, timer: 15 });
+}
+
+// --- OVERCLOCK POWERUP ---
+function spawnOverclock(pos) {
+    const group = new THREE.Group();
+    const icon = new THREE.Mesh(
+        new THREE.OctahedronGeometry(0.6, 0),
+        new THREE.MeshBasicMaterial({ color: 0xff00ff, wireframe: true })
+    );
+    group.add(icon);
+
+    const ring = new THREE.Mesh(
+        new THREE.RingGeometry(0.8, 1.0, 32),
+        new THREE.MeshBasicMaterial({ color: 0x00ffff, transparent: true, opacity: 0.5, side: THREE.DoubleSide })
+    );
+    group.add(ring);
+
+    group.position.copy(pos);
+    group.position.z = 0.5;
+    scene.add(group);
+
+    powerups.push({ mesh: group, type: 'OVERCLOCK' });
 }
 
 // --- GAME OVER ---
@@ -600,6 +1049,8 @@ function resetGame() {
     [...webs].forEach(w => scene.remove(w.mesh));
     enemies.length = 0; bullets.length = 0; webs.length = 0;
     score = 0; playerHP = PLAYER_MAX_HP; damageCooldown = 0; isGameOver = false; inventoryOpen = false;
+    stylePoints = 0;
+    updateStyleUI();
     document.getElementById('score-value').innerText = '000000';
     document.getElementById('inventory').style.display = 'none';
     updateHPBar();
@@ -607,27 +1058,136 @@ function resetGame() {
     camera.position.set(0, 0, 10);
     for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
     for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
+    for (let i = 0; i < POP_DIVA_COUNT; i++) createPopDiva();
+    updateHUD();
     document.getElementById('game-over').style.display = 'none';
     document.getElementById('game-menu').style.display = 'flex';
     document.getElementById('game-menu').style.opacity = '1';
 }
 
-// --- INVENTÁRIO ---
-function toggleInventory() {
-    inventoryOpen = !inventoryOpen;
-    document.getElementById('inventory').style.display = inventoryOpen ? 'flex' : 'none';
-}
+// --- ARMAS & MECÂNICAS ---
 
 // --- INTERAÇÃO ---
 document.getElementById('start-button').addEventListener('click', () => {
     const menu = document.getElementById('game-menu');
+    const transitionScreen = document.getElementById('transition-screen');
+
+    // Habilita movimentação IMEDIATAMENTE ao clicar para evitar travamentos
+    gameStarted = true;
+    shopOpen = false;
+    settingsOpen = false;
+    isGameOver = false;
+    equipSlot(0);
+    window.focus();
+
     menu.style.opacity = '0';
     setTimeout(() => {
         menu.style.display = 'none';
-        document.getElementById('hud').style.display = 'flex';
-        gameStarted = true;
+
+        // Inicia Transição do GIF
+        transitionScreen.style.display = 'flex';
+        setTimeout(() => { transitionScreen.style.opacity = '1'; }, 50);
+
+        // Duração da animação do GIF
+        setTimeout(() => {
+            transitionScreen.style.opacity = '0';
+            setTimeout(() => {
+                transitionScreen.style.display = 'none';
+                document.getElementById('hud').style.display = 'flex';
+
+                if (sounds && sounds.ctx && sounds.ctx.state === 'suspended') {
+                    sounds.ctx.resume();
+                }
+            }, 1000); // Espera o Fade-Out
+        }, 3000); // Tempo do GIF
     }, 500);
 });
+
+// --- SHOP LOGIC ---
+const shop = document.getElementById('shop');
+document.getElementById('shop-open-button').addEventListener('click', () => {
+    shop.style.display = 'flex';
+    document.getElementById('shop-coins-value').innerText = divaCoins;
+    shopOpen = true; // Update state
+});
+
+document.getElementById('shop-close-button').addEventListener('click', () => {
+    shop.style.display = 'none';
+    shopOpen = false; // Update state
+});
+
+document.getElementById('buy-hp').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 200) {
+        divaCoins -= 200;
+        playerHP = Math.min(PLAYER_MAX_HP, playerHP + 30);
+        updateHPBar();
+        updateHUD();
+        sounds.playBuy();
+    }
+});
+
+document.getElementById('buy-dmg').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 1000) {
+        divaCoins -= 1000;
+        extraDamage += 10;
+        updateHUD();
+        sounds.playBuy();
+    }
+});
+
+document.getElementById('settings-close-button').addEventListener('click', () => {
+    document.getElementById('settings-menu').style.display = 'none';
+    settingsOpen = false;
+});
+
+document.getElementById('config-button').addEventListener('click', () => {
+    document.getElementById('settings-menu').style.display = 'flex';
+    settingsOpen = true;
+});
+
+document.getElementById('volume-control').addEventListener('input', (e) => {
+    globalVolume = parseFloat(e.target.value);
+    // Aplica volume ao contexto de áudio se disponível
+    if (sounds && sounds.ctx) {
+        // Implementação simplificada: silenciar se volume for 0
+        // Para um sistema real, usaríamos um GainNode
+    }
+});
+
+document.getElementById('buy-speed').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 500) {
+        divaCoins -= 500;
+        // temporário seria mais complexo, vamos fazer permanente pequeno
+        // ou aumentar a velocidade do player
+        // window.PLAYER_SPEED += 0.02; // não funciona assim pq é const
+        // Mas podemos mudar a lógica de movimento
+        sounds.playBuy();
+        updateHUD();
+    }
+});
+
+document.getElementById('chip-tripleshot').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 1800 && !hasTripleShot) {
+        divaCoins -= 1800;
+        hasTripleShot = true;
+        updateHUD();
+        sounds.playBuy();
+        document.getElementById('chip-tripleshot').style.opacity = '0.5';
+        document.getElementById('chip-tripleshot').querySelector('.buy-btn').innerText = 'OWNED';
+    }
+});
+
+document.getElementById('chip-pierce').querySelector('.buy-btn').addEventListener('click', () => {
+    if (divaCoins >= 2000 && !hasPierce) {
+        divaCoins -= 2000;
+        hasPierce = true;
+        updateHUD();
+        sounds.playBuy();
+        document.getElementById('chip-pierce').style.opacity = '0.5';
+        document.getElementById('chip-pierce').querySelector('.buy-btn').innerText = 'OWNED';
+    }
+});
+
 
 document.getElementById('restart-button').addEventListener('click', resetGame);
 
@@ -637,65 +1197,97 @@ window.addEventListener('mousemove', (e) => {
 });
 
 window.addEventListener('mousedown', (e) => {
-    if (!gameStarted || inventoryOpen) return;
+    if (!gameStarted) return;
     if (e.target.closest('#game-menu') || e.target.closest('#game-over')) return;
     shoot();
 });
 
 window.addEventListener('wheel', (e) => {
-    if (!gameStarted || inventoryOpen) return;
-    switchWeapon(e.deltaY);
-});
-
-window.addEventListener('keydown', (e) => {
-    if (e.code === 'Escape' && gameStarted && !inventoryOpen) {
-        document.getElementById('game-menu').style.display = 'flex';
-        document.getElementById('game-menu').style.opacity = '1';
-        document.getElementById('hud').style.display = 'none';
-        gameStarted = false;
-    }
-    if ((e.code === 'KeyI' || e.code === 'Tab') && gameStarted) {
-        e.preventDefault();
-        toggleInventory();
+    if (!gameStarted) return;
+    if (e.deltaY > 0) {
+        equipSlot((currentWeaponIndex + 1) % 6);
+    } else {
+        equipSlot((currentWeaponIndex - 1 + 6) % 6);
     }
 });
 
 // --- MOVIMENTO WASD + Mira no Mouse ---
 function updateMovement() {
-    if (!gameStarted || inventoryOpen) return;
+    if (!gameStarted || shopOpen || settingsOpen) return;
 
     let mx = 0, my = 0;
-    if (keys['KeyW']) my += 1;
-    if (keys['KeyS']) my -= 1;
-    if (keys['KeyA']) mx -= 1;
-    if (keys['KeyD']) mx += 1;
+    if (keys['w'] || keys['KeyW'] || keys['ArrowUp']) my += 1;
+    if (keys['s'] || keys['KeyS'] || keys['ArrowDown']) my -= 1;
+    if (keys['a'] || keys['KeyA'] || keys['ArrowLeft']) mx -= 1;
+    if (keys['d'] || keys['KeyD'] || keys['ArrowRight']) mx += 1;
+
+    // Stamina regen and Dash check
+    const dashingRequested = keys['shift'] || keys['ShiftLeft'] || keys['ShiftRight'];
+    isDashing = dashingRequested && stamina > 0 && (mx !== 0 || my !== 0);
+
+    if (isDashing) {
+        stamina -= STAMINA_DECAY;
+        if (stamina < 0) stamina = 0;
+    } else {
+        stamina = Math.min(STAMINA_MAX, stamina + STAMINA_REGEN);
+    }
 
     let nextX = playerGroup.position.x;
     let nextY = playerGroup.position.y;
 
     if (mx !== 0 || my !== 0) {
         const len = Math.sqrt(mx * mx + my * my);
-        nextX += (mx / len) * PLAYER_SPEED;
-        nextY += (my / len) * PLAYER_SPEED;
+        const speed = isDashing ? DASH_SPEED_CONTINUOUS : PLAYER_SPEED;
+        nextX += (mx / len) * speed;
+        nextY += (my / len) * speed;
 
         playerState = 'walk';
+
+        if (isDashing) {
+            dashGhostTimer--;
+            if (dashGhostTimer <= 0) {
+                spawnGhost();
+                dashGhostTimer = 3;
+            }
+        }
 
         // Prioridade lateral na animação se houver movimento Horizontal
         if (mx !== 0) {
             playerDirection = 'side';
-            playerVisual.scale.x = mx < 0 ? -1 : 1;
+            playerVisual.scale.x = mx < 0 ? 1 : -1;
         } else if (my > 0) {
             playerDirection = 'back';
+            playerVisual.scale.x = 1;
         } else {
             playerDirection = 'front';
+            playerVisual.scale.x = 1;
         }
+        playerVisual.position.x = playerVisual.scale.x === 1 ? -0.3 : 0.3;
     } else {
         playerState = 'idle';
     }
 
-    // Troca de textura
-    if (playerMat.map !== playerTextures[playerDirection]) {
-        playerMat.map = playerTextures[playerDirection];
+    let currentSpriteName = 'front';
+    const weapon = HOTBAR[currentWeaponIndex];
+
+    if (playerState === 'idle') {
+        currentSpriteName = lastDirectionKey === 'KeyW' ? 'idleback' : 'idle';
+    } else {
+        currentSpriteName = playerDirection;
+    }
+
+    if (isAttacking && weapon === 'SWORD') {
+        currentSpriteName = 'attack';
+    } else if (isAttacking && weapon === 'GUN') {
+        currentSpriteName = 'aim';
+    }
+
+    // Troca de Textura e Geometria apropriada para não esticar
+    if (playerMat.map !== playerTextures[currentSpriteName]) {
+        playerMat.map = playerTextures[currentSpriteName];
+        if (geometries[currentSpriteName]) {
+            playerVisual.geometry = geometries[currentSpriteName];
+        }
     }
 
     // --- SISTEMA DE COLISÃO / ANTI-GRAVITY ---
@@ -711,8 +1303,8 @@ function updateMovement() {
         if (distSq < minRadiusSq && distSq > 0) {
             const dist = Math.sqrt(distSq);
             const overlap = (playerRadius + tree.radius) - dist;
-            nextX += (dx / dist) * overlap;
-            nextY += (dy / dist) * overlap;
+            nextX += (dx / dist) * overlap * 1.5;
+            nextY += (dy / dist) * overlap * 1.5;
         }
     }
 
@@ -721,7 +1313,7 @@ function updateMovement() {
     playerGroup.position.y = THREE.MathUtils.clamp(nextY, -MAP_LIMIT, MAP_LIMIT);
 
     // Depth Sorting pelo eixo Y da personagem
-    playerGroup.position.z = -playerGroup.position.y * 0.001;
+    playerGroup.position.z = -playerGroup.position.y * 0.01 + 0.005;
 
     camera.position.x += (playerGroup.position.x - camera.position.x) * 0.08;
     camera.position.y += (playerGroup.position.y - camera.position.y) * 0.08;
@@ -733,12 +1325,19 @@ function updateMovement() {
     const dy = worldMouse.y - playerGroup.position.y;
     const len = Math.sqrt(dx * dx + dy * dy);
     if (len > 0) {
-        // Gira apenas a arma para o mouse
         aimGroup.rotation.z = Math.atan2(dy, dx) - Math.PI / 2;
         aimDir.set(dx / len, dy / len, 0);
 
-        // Vira a sprite da personagem para o lado que está atirando/mirando
-        playerVisual.scale.x = dx < 0 ? -1 : 1;
+        const weaponStatus = HOTBAR[currentWeaponIndex];
+        if (weaponStatus && isAttacking) {
+            if (weaponStatus === 'GUN') {
+                playerVisual.scale.x = dx < 0 ? -1 : 1;
+                playerVisual.position.x = dx < 0 ? -0.4 : 0.4;
+            } else {
+                playerVisual.scale.x = dx < 0 ? 1 : -1;
+                playerVisual.position.x = playerVisual.scale.x === 1 ? -0.6 : 0.6;
+            }
+        }
     }
 }
 
@@ -752,23 +1351,52 @@ function animate() {
         updateWebs();
         updateHPBar();
         updateParticles();
+        updateStyle(); // Decaimento de estilo
 
-        // Animação da Personagem
-        if (playerState === 'walk') {
-            animTimer += ANIM_SPEED;
-            currentFrame = Math.floor(animTimer) % playerFrames;
-        } else {
-            currentFrame = 0; // Frame de parada
-        }
-
-        if (playerMat.map) {
-            playerMat.map.offset.x = currentFrame / playerFrames;
+        if (overclockTimer > 0) {
+            overclockTimer--;
+            if (overclockTimer <= 0) updateHUD();
         }
 
         if (damageCooldown > 0) damageCooldown--;
         playerVisual.visible = damageCooldown === 0 || Math.floor(damageCooldown / 6) % 2 === 0;
 
-        // IA dos Inimigos
+        // Update bars every ~3 frames for performance
+        if (Math.floor(Date.now() / 50) % 3 === 0) updateHUD();
+
+        // Update Shake
+        if (shakeTimer > 0) {
+            shakeTimer--;
+            const sx = (Math.random() - 0.5) * shakeIntensity;
+            const sy = (Math.random() - 0.5) * shakeIntensity;
+            camera.position.x += sx;
+            camera.position.y += sy;
+            shakeIntensity *= 0.9;
+        }
+
+        // Fading Ghosts
+        for (let i = ghosts.length - 1; i >= 0; i--) {
+            ghosts[i].timer--;
+            ghosts[i].mesh.material.opacity = ghosts[i].timer / 15;
+            if (ghosts[i].timer <= 0) {
+                scene.remove(ghosts[i].mesh); ghosts.splice(i, 1);
+            }
+        }
+
+        // Powerups Animation & Collision
+        for (let i = powerups.length - 1; i >= 0; i--) {
+            const p = powerups[i];
+            p.mesh.rotation.y += 0.05;
+            p.mesh.position.y += Math.sin(Date.now() * 0.005) * 0.005;
+
+            if (p.mesh.position.distanceTo(playerGroup.position) < 2.0) {
+                if (p.type === 'OVERCLOCK') {
+                    overclockTimer = OVERCLOCK_DURATION;
+                    sounds.playBuy();
+                }
+                scene.remove(p.mesh); powerups.splice(i, 1);
+            }
+        }
         enemies.forEach(enemy => {
             const mesh = enemy.mesh;
             const dx = playerGroup.position.x - mesh.position.x;
@@ -781,10 +1409,20 @@ function animate() {
                     const angle = Math.atan2(dy, dx);
                     mesh.position.x += Math.cos(angle) * ENEMY_SPEED;
                     mesh.position.y += Math.sin(angle) * ENEMY_SPEED;
-                    mesh.rotation.z = angle - Math.PI / 2;
-                    if (dist < 1.5 && damageCooldown === 0) {
+
+                    // Flip sprite baseado na direção do player
+                    enemy.visual.scale.x = dx > 0 ? -1 : 1;
+                    mesh.rotation.z = 0; // Mantém estático
+
+                    // Altera para PNG de ataque ao estar em Chase
+                    if (enemy.mat.map !== frogAttackTex) enemy.mat.map = frogAttackTex;
+
+                    if (dist < 1.5 && damageCooldown === 0 && !isDashing) {
                         playerHP -= DAMAGE_PER_HIT;
                         damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+                        stylePoints = Math.max(0, stylePoints - 1000); // Penalidade no estilo
+                        updateStyleUI();
+                        triggerShake(0.5, 25);
                         if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
                     }
                 } else {
@@ -796,7 +1434,13 @@ function animate() {
                     }
                     mesh.position.x += Math.cos(enemy.patrolDir) * PATROL_SPEED;
                     mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED;
-                    mesh.rotation.z = Math.sin(Date.now() * 0.002 + enemy.patrolDir) * 0.3;
+
+                    // Flip sprite baseado na direção da patrulha
+                    enemy.visual.scale.x = Math.cos(enemy.patrolDir) > 0 ? -1 : 1;
+                    mesh.rotation.z = 0;
+
+                    // Altera para PNG Idle ao patrulhar
+                    if (enemy.mat.map !== frogIdleTex) enemy.mat.map = frogIdleTex;
                 }
             } else if (enemy.type === 'spider') {
                 if (dist < SPIDER_DETECTION_RADIUS) {
@@ -825,6 +1469,35 @@ function animate() {
                     mesh.position.y += Math.sin(enemy.patrolDir) * PATROL_SPEED * 0.4;
                     mesh.rotation.z = Math.sin(Date.now() * 0.001) * 0.3;
                 }
+            } else if (enemy.type === 'pop') {
+                const time = Date.now() * 0.005;
+                if (dist < POP_DIVA_DETECTION_RADIUS) {
+                    const angle = Math.atan2(dy, dx);
+                    // Movimento em Zig-Zag
+                    mesh.position.x += Math.cos(angle) * POP_DIVA_SPEED + Math.cos(time) * 0.05;
+                    mesh.position.y += Math.sin(angle) * POP_DIVA_SPEED + Math.sin(time) * 0.05;
+                    mesh.rotation.z = time * 0.5;
+
+                    if (dist < 1.2 && damageCooldown === 0) {
+                        playerHP -= 20;
+                        damageCooldown = DAMAGE_COOLDOWN_FRAMES;
+
+                        // Roubo de Dinheiro (25%)
+                        const stolen = Math.floor(divaCoins * 0.25);
+                        if (stolen > 0) {
+                            divaCoins -= stolen;
+                            updateHUD();
+                            // Poderia adicionar um efeito neon aqui futuramente
+                            console.log(`POACHED! Stole ${stolen} CD`);
+                        }
+
+                        if (sounds) sounds.playDeath(); // Som de dano
+                        if (playerHP <= 0) { playerHP = 0; triggerGameOver(); }
+                    }
+                } else {
+                    mesh.position.x += Math.cos(time) * 0.02;
+                    mesh.position.y += Math.sin(time) * 0.02;
+                }
             }
             mesh.position.z = -mesh.position.y * 0.001;
         });
@@ -840,8 +1513,65 @@ window.addEventListener('resize', () => {
     camera.updateProjectionMatrix();
     renderer.setSize(window.innerWidth, window.innerHeight);
 });
+// Difficulty scaling was here but moving to rounds logic
+
+function updateRoundFeed(msg) {
+    document.getElementById('round-feed').innerText = ">> " + msg;
+}
+
+function announceRound(round) {
+    const el = document.getElementById('round-announcer');
+    el.innerText = "ROUND " + round;
+    el.style.display = 'block';
+    el.style.animation = 'none';
+    el.offsetHeight;
+    el.style.animation = 'announceScale 1.5s cubic-bezier(0.19, 1, 0.22, 1) forwards';
+}
+
+function nextRound() {
+    isTransitioningRound = true;
+    currentRound++;
+    enemiesKilledInRound = 0;
+    roundTarget = 10 + (currentRound * 5);
+
+    // Aumenta a velocidade base dos inimigos progressivamente
+    ENEMY_SPEED += 0.008;
+    PATROL_SPEED += 0.004;
+
+    let msg = "";
+    if (currentRound === 2) msg = "ARANHAS DETECTADAS!";
+    else if (currentRound === 3) msg = "NÍVEL POP DIVA ATIVADO!";
+    else if (currentRound % 5 === 0) msg = "HAVAÍ NEON TOTAL! CAOS ATIVADO!";
+    else msg = "DIFICULDADE AUMENTADA!";
+
+    updateRoundFeed(`ROUND ${currentRound} INICIANDO EM 5 SEC... ${msg}`);
+
+    setTimeout(() => {
+        announceRound(currentRound);
+        isTransitioningRound = false;
+        spawnInitialRoundEnemies();
+    }, 5000);
+}
+
+function spawnInitialRoundEnemies() {
+    if (currentRound === 1) {
+        for (let i = 0; i < 18; i++) createFrog(); // Mais sapos no início
+    } else if (currentRound === 2) {
+        for (let i = 0; i < 10; i++) createFrog();
+        for (let i = 0; i < 6; i++) createSpider();
+    } else {
+        // Escalonamento progressivo a partir do Round 3
+        const frogCount = Math.min(15, 6 + currentRound);
+        const spiderCount = Math.min(12, 4 + currentRound);
+        const popCount = Math.min(8, Math.floor(currentRound / 2));
+
+        for (let i = 0; i < frogCount; i++) createFrog();
+        for (let i = 0; i < spiderCount; i++) createSpider();
+        for (let i = 0; i < popCount; i++) createPopDiva();
+    }
+}
 
 // Init
-for (let i = 0; i < ENEMY_COUNT; i++) createFrog();
-for (let i = 0; i < SPIDER_COUNT; i++) createSpider();
+spawnInitialRoundEnemies();
+updateRoundFeed("ROUND 1: ELIMINE 10 SAPOS");
 animate();

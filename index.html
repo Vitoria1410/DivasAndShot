@@ -14,13 +14,7 @@
 <body>
     <!-- Overlay de Menu -->
     <div id="game-menu">
-        <div class="menu-content">
-            <!-- Olhos no Fundo -->
-            <div class="eyes-bg">
-                <div class="eye-shape eye-left"></div>
-                <div class="eye-shape eye-right"></div>
-            </div>
-
+        <div class="menu-content sci-fi-border">
             <h1 class="glitch" data-text="DIVAS & SHOT">DIVAS <span class="ampersand">&</span> SHOT</h1>
 
             <div class="subtitle-container">
@@ -34,12 +28,12 @@
                     <span>START</span>
                     <span class="icon">❯</span>
                 </button>
-                <button id="shop-button" class="menu-btn">
+                <button id="shop-open-button" class="menu-btn">
                     <span>SHOP</span>
                     <span class="icon">🛒</span>
                 </button>
                 <button id="config-button" class="menu-btn">
-                    <span>CONFIG</span>
+                    <span>SETTINGS</span>
                     <span class="icon">⚙️</span>
                 </button>
             </div>
@@ -51,9 +45,73 @@
         </div>
     </div>
 
+    <!-- GIF Transition Overlay -->
+    <div id="transition-screen" style="display: none;">
+        <img src="grass.gif" id="transition-gif" alt="Transição">
+    </div>
+
+    <!-- Shop Overlay -->
+    <div id="shop" style="display: none;">
+        <div class="shop-panel sci-fi-border">
+            <div class="shop-header">
+                <h2 class="shop-title">✦ DIVA SHOP ✦</h2>
+                <div class="shop-coins">COINS: <span id="shop-coins-value">0</span></div>
+            </div>
+            <div class="shop-items">
+                <div class="shop-item" id="buy-hp">
+                    <div class="item-icon">💖</div>
+                    <div class="item-info">
+                        <span class="item-name">HEAL 30 HP</span>
+                        <span class="item-price">200 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+                <div class="shop-item" id="buy-dmg">
+                    <div class="item-icon">🔥</div>
+                    <div class="item-info">
+                        <span class="item-name">DMG BOOST</span>
+                        <span class="item-price">1000 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+                <div class="shop-item" id="buy-speed">
+                    <div class="item-icon">⚡</div>
+                    <div class="item-info">
+                        <span class="item-name">SPD BOOST</span>
+                        <span class="item-price">500 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+            </div>
+            <h3 class="shop-subtitle">✦ NEON CHIPS ✦</h3>
+            <div class="shop-items chips-grid">
+                <div class="shop-item chip-item" id="chip-tripleshot">
+                    <div class="item-icon">🔱</div>
+                    <div class="item-info">
+                        <span class="item-name">TRIPLE SHOT</span>
+                        <span class="item-price">1800 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+                <div class="shop-item chip-item" id="chip-pierce">
+                    <div class="item-icon">🏹</div>
+                    <div class="item-info">
+                        <span class="item-name">PIERCE CHIP</span>
+                        <span class="item-price">2000 CD</span>
+                    </div>
+                    <button class="buy-btn">BUY</button>
+                </div>
+            </div>
+            <button id="shop-close-button" class="menu-btn">
+                <span>VOLTAR</span>
+                <span class="icon">↩</span>
+            </button>
+        </div>
+    </div>
+
     <!-- Game Over Screen -->
     <div id="game-over">
-        <div class="game-over-content">
+        <div class="game-over-content sci-fi-border">
             <h2 class="game-over-title">GAME OVER</h2>
             <p class="game-over-sub">você foi derrubada pelas divarzinhas 💀</p>
             <button id="restart-button" class="menu-btn">
@@ -63,37 +121,61 @@
         </div>
     </div>
 
-    <!-- Inventory Overlay -->
-    <div id="inventory">
-        <div class="inventory-panel">
-            <div class="inv-header">
-                <h2 class="inv-title">✦ INVENTÁRIO ✦</h2>
-                <span class="inv-close">[I] FECHAR</span>
-            </div>
-            <div class="inv-grid">
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-                <div class="inv-slot"></div>
-            </div>
-            <p class="inv-empty-msg">nenhum item coletado ainda...</p>
-        </div>
-    </div>
 
     <!-- HUD do Jogo -->
     <div id="hud" style="display: none;">
         <div class="score-container">
-            SCORE: <span id="score-value">000000</span>
+            <div>SCORE: <span id="score-value">000000</span></div>
+            <div class="coins-hud">COINS: <span id="coins-value">000</span></div>
         </div>
-        <div id="weapon-hud" class="weapon-container">
-            WEAPON: <span id="weapon-name">GUN</span>
+        <div id="style-meter">
+            <div class="style-rank">D</div>
+            <div class="style-bar-container">
+                <div id="style-bar-fill"></div>
+            </div>
+            <div class="style-label">STYLE</div>
+        </div>
+        <!-- Progress Bars (Overclock & Dash) -->
+        <div class="ability-bars">
+            <div class="bar-unit">
+                <div class="bar-label">OVERCLOCK</div>
+                <div class="bar-bg overclock-bg">
+                    <div id="overclock-fill" class="bar-fill"></div>
+                </div>
+            </div>
+            <div class="bar-unit">
+                <div class="bar-label">STAMINA</div>
+                <div class="bar-bg stamina-bg">
+                    <div id="stamina-fill" class="bar-fill"></div>
+                </div>
+            </div>
+        </div>
+
+        <div class="hotbar-container">
+            <div class="hotbar-slot active" id="slot-1"><span class="slot-num">1</span><img src="espada.png"
+                    class="slot-img"></div>
+            <div class="hotbar-slot" id="slot-2"><span class="slot-num">2</span><img src="gun.png" class="slot-img">
+            </div>
+            <div class="hotbar-slot" id="slot-3"><span class="slot-num">3</span></div>
+            <div class="hotbar-slot" id="slot-4"><span class="slot-num">4</span></div>
+            <div class="hotbar-slot" id="slot-5"><span class="slot-num">5</span></div>
+            <div class="hotbar-slot" id="slot-6"><span class="slot-num">6</span></div>
         </div>
         <div class="crosshair"></div>
+        <div id="round-feed">>> SISTEMA ONLINE... AGUARDANDO COMANDO.</div>
+        <div id="round-announcer" style="display: none;">ROUND 1</div>
+    </div>
+
+    <!-- Settings Menu -->
+    <div id="settings-menu" class="overlay">
+        <div class="panel sci-fi-border">
+            <h2 class="panel-title">SYSTEM SETTINGS</h2>
+            <div class="setting-item">
+                <label>GLOBAL VOLUME</label>
+                <input type="range" id="volume-control" min="0" max="1" step="0.1" value="0.5">
+            </div>
+            <button class="close-btn" id="settings-close-button">BACK</button>
+        </div>
     </div>
 
     <!-- Container do Three.js -->
