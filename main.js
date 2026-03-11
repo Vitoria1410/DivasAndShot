@@ -34,7 +34,7 @@ let inventoryOpen = false;
 // Animation State
 let playerState = 'idle'; // 'idle' or 'walk'
 let playerDirection = 'front'; // 'front', 'back', 'side'
-let playerFrames = 4; // Ajuste para o número real de frames no seu png
+let playerFrames = 1; // Ajustado para 1 frame (imagens únicas)
 let animTimer = 0;
 let currentFrame = 0;
 const ANIM_SPEED = 0.15;

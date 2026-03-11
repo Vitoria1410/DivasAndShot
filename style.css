@@ -53,12 +53,15 @@ html {
     gap: 60px;
     overflow: visible;
     margin-bottom: 5px;
+    position: relative;
+    z-index: 50;
 }
 
 .eye-shape {
+    display: block;
     width: 220px;
     height: 130px;
-    background-image: url('eyes_sprite.png.png');
+    background-image: url('eyes_sprite.png');
     background-size: 200% 200%;
     background-repeat: no-repeat;
     animation: eyePulse 3s infinite alternate;
